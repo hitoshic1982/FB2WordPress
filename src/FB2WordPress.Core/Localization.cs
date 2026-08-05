@@ -2,12 +2,12 @@ using System.Globalization;
 
 namespace FB2WordPress;
 
-internal sealed record LanguageOption(string Code, string Name)
+public sealed record LanguageOption(string Code, string Name)
 {
     public override string ToString() => Name;
 }
 
-internal static class L
+public static class L
 {
     public static readonly LanguageOption[] Supported =
     [
@@ -16,7 +16,6 @@ internal static class L
 
     static readonly IReadOnlyDictionary<string, string[]> Texts = Build();
     public static string Language { get; private set; } = Detect();
-    public static string FontName => Language == "ja" ? "Yu Gothic UI" : Language == "en" ? "Segoe UI" : "Microsoft JhengHei UI";
     static int Index => Array.FindIndex(Supported, item => item.Code == Language) is var index && index >= 0 ? index : 2;
 
     public static void Configure(string? language)
@@ -37,8 +36,8 @@ internal static class L
         return args.Length == 0 ? value : string.Format(CultureInfo.CurrentCulture, value, args);
     }
 
-    internal static IReadOnlyList<string> SupportedCodes => Supported.Select(item => item.Code).ToArray();
-    internal static IReadOnlyCollection<string> Keys => Texts.Keys.ToArray();
+    public static IReadOnlyList<string> SupportedCodes => Supported.Select(item => item.Code).ToArray();
+    public static IReadOnlyCollection<string> Keys => Texts.Keys.ToArray();
 
     static string Detect()
     {
@@ -63,7 +62,7 @@ internal static class L
         ["privacy_private"] = ["不公開", "不公开", "Private", "非公開"],
         ["privacy_unlisted"] = ["知道連結者可看", "知道链接者可见", "Unlisted", "限定公開"],
         ["privacy_public"] = ["公開", "公开", "Public", "公開"],
-        ["setup_note"] = ["第一次設定：在 WordPress 後台 → 使用者 → 個人資料 → 應用程式密碼，建立名稱 FB2WordPress。\r\n\r\n請貼入應用程式密碼，不要填 WordPress 登入密碼。資料會由 Windows 加密保存在這台電腦。", "初次设置：在 WordPress 后台 → 用户 → 个人资料 → 应用程序密码，创建名为 FB2WordPress 的密码。\r\n\r\n请粘贴应用程序密码，不要填写 WordPress 登录密码。数据会由 Windows 加密保存在此电脑。", "First-time setup: in WordPress Admin, open Users → Profile → Application Passwords and create one named FB2WordPress.\r\n\r\nPaste the application password, not your WordPress sign-in password. Windows encrypts the data on this PC.", "初回設定：WordPress 管理画面の「ユーザー」→「プロフィール」→「アプリケーションパスワード」で FB2WordPress という名前のパスワードを作成します。\r\n\r\nWordPress のログインパスワードではなく、アプリケーションパスワードを貼り付けてください。データは Windows によりこの PC 上で暗号化されます。"],
+        ["setup_note"] = ["第一次設定：在 WordPress 後台 → 使用者 → 個人資料 → 應用程式密碼，建立名稱 FB2WordPress。\r\n\r\n請貼入應用程式密碼，不要填 WordPress 登入密碼。", "初次设置：在 WordPress 后台 → 用户 → 个人资料 → 应用程序密码，创建名为 FB2WordPress 的密码。\r\n\r\n请粘贴应用程序密码，不要填写 WordPress 登录密码。", "First-time setup: in WordPress Admin, open Users → Profile → Application Passwords and create one named FB2WordPress.\r\n\r\nPaste the application password, not your WordPress sign-in password.", "初回設定：WordPress 管理画面の「ユーザー」→「プロフィール」→「アプリケーションパスワード」で FB2WordPress という名前のパスワードを作成します。\r\n\r\nWordPress のログインパスワードではなく、アプリケーションパスワードを貼り付けてください。"],
         ["save_test"] = ["測試連線並儲存", "测试连接并保存", "Test connection and save", "接続をテストして保存"],
         ["cancel"] = ["取消", "取消", "Cancel", "キャンセル"],
         ["connection_required"] = ["請填入 HTTPS 網站網址、WordPress 使用者名稱及應用程式密碼。", "请填写 HTTPS 网站地址、WordPress 用户名及应用程序密码。", "Enter an HTTPS site address, WordPress username, and application password.", "HTTPS のサイトURL、WordPress ユーザー名、アプリケーションパスワードを入力してください。"],

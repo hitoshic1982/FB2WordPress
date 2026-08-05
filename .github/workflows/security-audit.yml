@@ -1,0 +1,54 @@
+name: Security Audit / NuGet
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '41 18 * * 3'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  nuget:
+    name: NuGet vulnerability audit
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore with NuGet audit enforced
+        shell: pwsh
+        run: |
+          $projects = @(
+            'src/FB2WordPress.Core/FB2WordPress.Core.csproj',
+            'src/FB2WordPress.Desktop/FB2WordPress.Desktop.csproj',
+            'src/FB2WordPress/FB2WordPress.csproj',
+            'tests/CoreAudit/FB2WordPress.Core.Audit.csproj',
+            'tests/AuditHarness/WordPressAuditHarness.csproj'
+          )
+          foreach ($project in $projects) {
+            dotnet restore $project -p:NuGetAudit=true -p:NuGetAuditMode=all -warnaserror:NU1901,NU1902,NU1903,NU1904
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - name: Report vulnerable direct and transitive packages
+        shell: pwsh
+        run: |
+          $projects = @(
+            'src/FB2WordPress.Core/FB2WordPress.Core.csproj',
+            'src/FB2WordPress.Desktop/FB2WordPress.Desktop.csproj',
+            'src/FB2WordPress/FB2WordPress.csproj'
+          )
+          foreach ($project in $projects) {
+            dotnet list $project package --vulnerable --include-transitive
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }

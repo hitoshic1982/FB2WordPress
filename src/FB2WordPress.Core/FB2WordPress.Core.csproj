@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>FB2WordPress.Core</AssemblyName>
+    <RootNamespace>FB2WordPress</RootNamespace>
+    <Description>Cross-platform Facebook export parsing and WordPress migration core.</Description>
+  </PropertyGroup>
+</Project>

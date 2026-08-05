@@ -1,10 +1,14 @@
 # FB2WordPress
 <p align="center">
-  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml"><img alt="Windows CI" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml"><img alt="Cross-platform CI" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/codeql.yml/badge.svg"></a>
+  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/security-audit.yml"><img alt="Security Audit / NuGet" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/security-audit.yml/badge.svg"></a>
+  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/secret-defense.yml"><img alt="Secret Defense / Gitleaks" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/secret-defense.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/hitoshic1982/FB2WordPress?label=release"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+  <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&amp;logoColor=white">
+  <img alt="Four interface languages" src="https://img.shields.io/badge/interface%20languages-4-informational">
 </p>
-
 
 [繁體中文](README.md) · [简体中文](README.zh-CN.md) · [English](README.en.md) · [日本語](README.ja.md)
 
@@ -55,7 +59,13 @@ Facebook の公式ダウンロードデータに含まれる投稿・画像・�
 
 [PRIVACY.md](PRIVACY.md) と [SECURITY.md](SECURITY.md) もご覧ください。
 
+## クロスプラットフォーム開発状況
+
+現在、完全な移行、画像処理、安全な資格情報保存を利用できるのは Windows WinForms 版だけです。共有コアと Avalonia の最小入口は Windows、macOS、Linux の CI でビルドとテストが可能ですが、macOS／Linux 完全版の完成や実機検証を意味しません。対応表、安全な保管庫の原則、今後の計画は [クロスプラットフォーム開発ガイド](docs/CROSS_PLATFORM.md) をご覧ください。
+
 ## 開発者向け
+
+> 「この剣は、私が鍛え上げました。あとは皆さんに託します。」[炎剣オープンソースソフトウェアファミリー品質基準](CONTRIBUTING.md)もご覧ください。
 
 ```powershell
 dotnet build src/FB2WordPress/FB2WordPress.csproj -c Release

@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using FB2WordPress;
 
 var failures = new List<string>();
 void Check(bool condition, string name) { Console.WriteLine($"{(condition ? "PASS" : "FAIL")} {name}"); if (!condition) failures.Add(name); }
@@ -70,23 +71,87 @@ static int MatchingCallEnd(string source, int openParenthesis)
     return -1;
 }
 
-var assembly = Assembly.Load("FB2WordPress");
+var assembly = Assembly.Load("FB2WordPress.Core");
+var windowsAssembly = Assembly.Load("FB2WordPress");
+var readmeDeclarations = new Dictionary<string, string>(StringComparer.Ordinal)
+{
+    ["README.md"] = "劍，我已鍛成；餘下的路，就交給你們了。",
+    ["README.zh-CN.md"] = "剑，我已锻成；余下的路，就交给你们了。",
+    ["README.en.md"] = "I have forged this sword. What comes next is up to you.",
+    ["README.ja.md"] = "この剣は、私が鍛え上げました。あとは皆さんに託します。"
+};
 
 foreach (var readmeName in new[] { "README.md", "README.zh-CN.md", "README.en.md", "README.ja.md" })
 {
     var readme = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), readmeName));
-    Check(readme.Contains("actions/workflows/ci.yml/badge.svg", StringComparison.Ordinal), $"{readmeName} shows real Windows CI status");
+    Check(readme.Contains("actions/workflows/ci.yml/badge.svg", StringComparison.Ordinal) && readme.Contains("Cross-platform CI", StringComparison.Ordinal), $"{readmeName} shows real cross-platform CI status");
+    Check(readme.Contains("actions/workflows/codeql.yml/badge.svg", StringComparison.Ordinal), $"{readmeName} shows real CodeQL status");
+    Check(readme.Contains("actions/workflows/security-audit.yml/badge.svg", StringComparison.Ordinal), $"{readmeName} shows real security-audit status");
+    Check(readme.Contains("actions/workflows/secret-defense.yml/badge.svg", StringComparison.Ordinal), $"{readmeName} shows real secret-defense status");
     Check(readme.Contains("img.shields.io/github/v/release/hitoshic1982/FB2WordPress", StringComparison.Ordinal), $"{readmeName} shows the latest release");
     Check(readme.Contains("license-MIT-blue.svg", StringComparison.Ordinal), $"{readmeName} shows the MIT license");
+    Check(readme.Contains("img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&amp;logoColor=white", StringComparison.Ordinal), $"{readmeName} identifies .NET 10");
+    Check(readme.Contains("img.shields.io/badge/interface%20languages-4-informational", StringComparison.Ordinal) && readme.Contains("Four interface languages", StringComparison.Ordinal), $"{readmeName} identifies four-language documentation");
+    Check(readme.Contains("CONTRIBUTING.md", StringComparison.Ordinal), $"{readmeName} links the software-family quality standard");
+    Check(readme.Contains(readmeDeclarations[readmeName], StringComparison.Ordinal), $"{readmeName} carries the localized open-source declaration");
     Check(readme.Contains("https://buymeacoffee.com/flameblade_studio", StringComparison.Ordinal) && readme.Contains("https://www.paypal.com/paypalme/flamebladestudio", StringComparison.OrdinalIgnoreCase), $"{readmeName} includes both voluntary support links");
     Check(!readme.Contains("\n+<p align=\"center\">", StringComparison.Ordinal), $"{readmeName} has no stray patch marker");
 }
 
+var workflowNames = new[] { "ci.yml", "codeql.yml", "security-audit.yml", "secret-defense.yml", "dependency-review.yml" };
+foreach (var workflowName in workflowNames)
+{
+    var workflow = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), ".github", "workflows", workflowName));
+    var usesLines = Regex.Matches(workflow, @"(?m)^\s*-\s+uses:\s+[^\r\n]+\r?$");
+    var pinnedUsesLines = Regex.Matches(workflow, @"(?m)^\s*-\s+uses:\s+[^@\r\n]+@[0-9a-f]{40}(?:\s+#.*)?$");
+    Check(workflow.Contains("workflow_dispatch:", StringComparison.Ordinal), $"{workflowName} supports manual dispatch");
+    Check(workflow.Contains("schedule:", StringComparison.Ordinal), $"{workflowName} has a scheduled safety run");
+    Check(workflow.Contains("concurrency:", StringComparison.Ordinal), $"{workflowName} prevents redundant concurrent runs");
+    Check(workflow.Contains("contents: read", StringComparison.Ordinal) && !workflow.Contains("write-all", StringComparison.OrdinalIgnoreCase), $"{workflowName} uses restricted permissions");
+    Check(usesLines.Count > 0 && usesLines.Count == pinnedUsesLines.Count, $"{workflowName} pins every third-party action to a commit SHA");
+}
+
+var ciWorkflow = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), ".github", "workflows", "ci.yml"));
+Check(ciWorkflow.Contains("tags: ['v*']", StringComparison.Ordinal), "A normal v1.1.0-rc.1 tag push triggers cross-platform CI");
+Check(ciWorkflow.Contains("-p:Version=${{ steps.package_version.outputs.value }}", StringComparison.Ordinal), "A release tag overrides fallback assembly metadata during publish");
+Check(ciWorkflow.Contains("windows-latest", StringComparison.Ordinal) && ciWorkflow.Contains("macos-latest", StringComparison.Ordinal) && ciWorkflow.Contains("ubuntu-latest", StringComparison.Ordinal), "Cross-platform CI covers Windows, macOS, and Linux runners");
+
+var codeQlWorkflow = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), ".github", "workflows", "codeql.yml"));
+Check(codeQlWorkflow.Contains("languages: csharp", StringComparison.Ordinal) && codeQlWorkflow.Contains("security-events: write", StringComparison.Ordinal), "CodeQL analyzes C# with the required result permission");
+
+var securityWorkflow = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), ".github", "workflows", "security-audit.yml"));
+Check(securityWorkflow.StartsWith("name: Security Audit / NuGet", StringComparison.Ordinal), "NuGet workflow uses the shared family display name");
+Check(securityWorkflow.Contains("NuGetAuditMode=all", StringComparison.Ordinal) && securityWorkflow.Contains("--vulnerable --include-transitive", StringComparison.Ordinal), "Security Audit checks direct and transitive NuGet vulnerabilities");
+
+var secretDefenseWorkflow = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), ".github", "workflows", "secret-defense.yml"));
+Check(secretDefenseWorkflow.StartsWith("name: Secret Defense / Gitleaks", StringComparison.Ordinal), "Gitleaks workflow uses the shared family display name");
+Check(secretDefenseWorkflow.Contains("gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc", StringComparison.Ordinal) && secretDefenseWorkflow.Contains("GITLEAKS_ENABLE_COMMENTS: 'false'", StringComparison.Ordinal), "Secret Defense uses a pinned non-commenting Gitleaks action");
+
+var dependencyWorkflow = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), ".github", "workflows", "dependency-review.yml"));
+Check(dependencyWorkflow.Contains("actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294", StringComparison.Ordinal), "Dependency Review uses the reviewed pinned action revision");
+
+var contributing = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "CONTRIBUTING.md"));
+foreach (var standardPhrase in new[] { "炎劍開源軟體家族品質標準", "炎剑开源软件家族质量标准", "Flameblade Open Source Software Family Quality Standard", "炎剣オープンソースソフトウェアファミリー品質基準" })
+    Check(contributing.Contains(standardPhrase, StringComparison.Ordinal), $"Quality standard includes {standardPhrase}");
+foreach (var declaration in new[] { "劍，我已鍛成；餘下的路，就交給你們了。", "剑，我已锻成；余下的路，就交给你们了。", "I have forged this sword. What comes next is up to you.", "この剣は、私が鍛え上げました。あとは皆さんに託します。" })
+    Check(contributing.Contains(declaration, StringComparison.Ordinal), $"Open-source declaration includes {declaration}");
+Check(contributing.Contains("Gitleaks", StringComparison.Ordinal) && contributing.Contains("SHA256", StringComparison.Ordinal) && contributing.Contains("one-off manual exceptions", StringComparison.Ordinal), "Quality standard requires real scans, traceable artifacts, and maintainable automation");
+
+var sharedBuildMetadata = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "Directory.Build.props"));
+Check(sharedBuildMetadata.Contains("<Version>1.1.0</Version>", StringComparison.Ordinal), "All project outputs share the v1.1.0 fallback metadata from one source");
+var versionAndSupportSurfaces = new[] { "README.md", "README.zh-CN.md", "README.en.md", "README.ja.md", "CHANGELOG.md", Path.Combine("docs", "CROSS_PLATFORM.md") }
+    .Select(path => File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), path)))
+    .ToArray();
+Check(versionAndSupportSurfaces.All(text => !text.Contains("2.2.0", StringComparison.OrdinalIgnoreCase)), "FB2WordPress documentation contains no MoHan v2.2.0 version leak");
+Check(versionAndSupportSurfaces.All(text => text.Contains("macOS", StringComparison.Ordinal) && text.Contains("Linux", StringComparison.Ordinal)) &&
+      File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "README.en.md")).Contains("not a claim that complete macOS or Linux releases exist", StringComparison.Ordinal),
+    "Documentation keeps macOS and Linux at the buildable-foundation boundary");
+
 // Localization: verify the public language contract and every translated value.
 var localizer = assembly.GetType("FB2WordPress.L", true)!;
-var supportedCodes = ((IEnumerable)localizer.GetProperty("SupportedCodes", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!).Cast<string>().ToArray();
+var supportedCodes = ((IEnumerable)localizer.GetProperty("SupportedCodes", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)!.GetValue(null)!).Cast<string>().ToArray();
 Check(supportedCodes.SequenceEqual(new[] { "zh-TW", "zh-CN", "en", "ja" }), "Four interface languages are available in the intended order");
-var localizationKeys = ((IEnumerable)localizer.GetProperty("Keys", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!).Cast<string>().ToArray();
+var localizationKeys = ((IEnumerable)localizer.GetProperty("Keys", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)!.GetValue(null)!).Cast<string>().ToArray();
 Check(localizationKeys.Length >= 45, "Localization covers setup and WordPress-specific tools");
 var configureLanguage = localizer.GetMethod("Configure", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)!;
 var translate = localizer.GetMethod("T", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)!;
@@ -103,10 +168,13 @@ configureLanguage.Invoke(null, new object?[] { "unsupported" });
 
 // All East Asian production string literals must either be in the central
 // catalog or inside an explicit four-language L.P(...) call.
-var sourceRoot = Path.Combine(Directory.GetCurrentDirectory(), "src", "FB2WordPress");
+var sourceRoot = Path.Combine(Directory.GetCurrentDirectory(), "src");
 var eastAsianLiteral = new Regex(@"""(?:\\.|[^""\\])*[\u3040-\u30ff\u3400-\u9fff](?:\\.|[^""\\])*""", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2));
 var hardcodedUserText = new List<string>();
-foreach (var file in Directory.EnumerateFiles(sourceRoot, "*.cs", SearchOption.AllDirectories).Where(path => !path.EndsWith("Localization.cs", StringComparison.OrdinalIgnoreCase)))
+foreach (var file in Directory.EnumerateFiles(sourceRoot, "*.cs", SearchOption.AllDirectories).Where(path =>
+             !path.EndsWith("Localization.cs", StringComparison.OrdinalIgnoreCase) &&
+             !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase) &&
+             !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)))
 {
     var source = File.ReadAllText(file);
     var ranges = LocalizedCallRanges(source);
@@ -145,7 +213,7 @@ try
     Check((string)textProperty.GetValue(parsed[1])! == "舊版中文 😀 #舊標籤", "Legacy mojibake repaired");
 
     // Safe ZIP extraction and zip-slip rejection.
-    var mainForm = assembly.GetType("FB2WordPress.MainForm", true)!;
+var mainForm = windowsAssembly.GetType("FB2WordPress.MainForm", true)!;
     var extract = mainForm.GetMethod("SafeExtract", BindingFlags.Static | BindingFlags.NonPublic)!;
     var normalZip = Path.Combine(root, "normal.zip");
     using (var z = ZipFile.Open(normalZip, ZipArchiveMode.Create)) { var e = z.CreateEntry("folder/ok.txt"); using var w = new StreamWriter(e.Open()); w.Write("ok"); }
@@ -194,7 +262,7 @@ try
     Check((string)normalizeHtml.Invoke(null, new object[] { compactHtml })! == compactHtml, "Whitespace cleanup is idempotent and safe to resume");
     Check((string)normalizeHtml.Invoke(null, new object[] { "<p>一般 WordPress 內容\n\n\n保持不變</p>" })! == "<p>一般 WordPress 內容\n\n\n保持不變</p>", "Non-FB2WordPress content is not changed");
     var settingsType = assembly.GetType("FB2WordPress.AppSettings", true)!;
-    using (var apiInstance = (IDisposable)Activator.CreateInstance(api, Activator.CreateInstance(settingsType)!, (Action<string>)(_ => { }))!)
+    using (var apiInstance = (IDisposable)Activator.CreateInstance(api, Activator.CreateInstance(settingsType)!, (Action<string>)(_ => { }), (Func<AppSettings, CancellationToken, Task>)((_, _) => Task.CompletedTask), null)!)
     {
         Exception? authError = null;
         try { await (Task)api.GetMethod("EnsureYouTubeAuthorizedAsync", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(apiInstance, new object[] { CancellationToken.None })!; }
@@ -204,7 +272,7 @@ try
 
     // Smart image optimization: source integrity, resize/size reduction and
     // lossless/animation-safe format preservation.
-    var optimizer = assembly.GetType("FB2WordPress.ImageOptimizer", true)!;
+var optimizer = windowsAssembly.GetType("FB2WordPress.ImageOptimizer", true)!;
     var prepare = optimizer.GetMethod("Prepare", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)!;
     var largeJpeg = Path.Combine(root, "large.jpg");
     using (var bitmap = new Bitmap(4000, 3000))
@@ -225,7 +293,7 @@ try
     var png = Path.Combine(root, "text.png"); using (var bitmap = new Bitmap(800, 400)) bitmap.Save(png, ImageFormat.Png);
     using (var preserved = (IDisposable)prepare.Invoke(null, new object[] { png })!) Check((string)preserved.GetType().GetProperty("Path")!.GetValue(preserved)! == png, "PNG is preserved without lossy recompression");
     // Migration state atomic save/load and backup recovery.
-    var store = assembly.GetType("FB2WordPress.SettingsStore", true)!;
+var store = windowsAssembly.GetType("FB2WordPress.SettingsStore", true)!;
     var stateType = assembly.GetType("FB2WordPress.MigrationState", true)!;
     var state = Activator.CreateInstance(stateType)!;
     var fakeZip = Path.Combine(root, "identity.zip"); File.WriteAllText(fakeZip, "x");

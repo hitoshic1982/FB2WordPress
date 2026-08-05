@@ -7,7 +7,6 @@
     <Nullable>enable</Nullable>
     <AssemblyName>FB2WordPress</AssemblyName>
     <RootNamespace>FB2WordPress</RootNamespace>
-    <Version>1.1.0</Version>
     <AssemblyTitle>FB2WordPress</AssemblyTitle>
     <Description>Move posts from an official Facebook data export to WordPress.</Description>
     <Product>FB2WordPress</Product>
@@ -19,4 +18,7 @@
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../FB2WordPress.Core/FB2WordPress.Core.csproj" />
+  </ItemGroup>
 </Project>

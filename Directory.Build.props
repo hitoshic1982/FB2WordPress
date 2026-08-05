@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <Version>1.1.0</Version>
+    <RepositoryUrl>https://github.com/hitoshic1982/FB2WordPress</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+</Project>

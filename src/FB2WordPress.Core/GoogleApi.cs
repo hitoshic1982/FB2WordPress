@@ -8,20 +8,33 @@ using System.Text.Json.Nodes;
 
 namespace FB2WordPress;
 
-internal sealed class GoogleQuotaException(string message) : Exception(message);
+public sealed class GoogleQuotaException(string message) : Exception(message);
 
 // WordPress REST API plus the existing Google OAuth flow used only for YouTube.
-internal sealed class GoogleApi : IDisposable
+public sealed class GoogleApi : IDisposable
 {
     const int ScopeVersion = 1;
     const string Scopes = "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly";
-    readonly HttpClient http = new() { Timeout = TimeSpan.FromHours(4) };
+    readonly HttpClient http;
+    readonly bool ownsHttpClient;
     readonly AppSettings settings;
     readonly Action<string> log;
+    readonly Func<AppSettings, CancellationToken, Task> saveSettingsAsync;
     string accessToken = "";
     DateTime tokenExpires;
 
-    public GoogleApi(AppSettings settings, Action<string> log) { this.settings = settings; this.log = log; }
+    public GoogleApi(
+        AppSettings settings,
+        Action<string> log,
+        Func<AppSettings, CancellationToken, Task> saveSettingsAsync,
+        HttpClient? httpClient = null)
+    {
+        this.settings = settings;
+        this.log = log;
+        this.saveSettingsAsync = saveSettingsAsync;
+        http = httpClient ?? new HttpClient { Timeout = TimeSpan.FromHours(4) };
+        ownsHttpClient = httpClient is null;
+    }
 
     string Api(string path) => settings.SiteUrl.TrimEnd('/') + "/wp-json/wp/v2/" + path.TrimStart('/');
     AuthenticationHeaderValue WordPressAuth() => new("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes(settings.WordPressUser + ":" + settings.WordPressAppPassword)));
@@ -40,7 +53,7 @@ internal sealed class GoogleApi : IDisposable
         using var response = await SendWordPressAsync(HttpMethod.Get, "users/me?context=edit", null, ct);
         var body = await response.Content.ReadAsStringAsync(ct); EnsureWordPress(response, body, L.P("連線 WordPress", "连接 WordPress", "Connect to WordPress", "WordPress に接続"));
         settings.BlogName = JsonNode.Parse(body)?["name"]?.GetValue<string>() ?? settings.WordPressUser;
-        SettingsStore.Save(settings);
+        await saveSettingsAsync(settings, ct);
     }
 
     public async Task<List<BlogInfo>> GetBlogsAsync(CancellationToken ct)
@@ -163,7 +176,7 @@ internal sealed class GoogleApi : IDisposable
         if (string.IsNullOrEmpty(code) || returnedState != state) throw new InvalidOperationException(L.P("Google 授權驗證失敗。", "Google 授权验证失败。", "Google authorization validation failed.", "Google 認証の検証に失敗しました。"));
         var form = new Dictionary<string, string> { ["client_id"] = settings.ClientId, ["code"] = code, ["code_verifier"] = verifier, ["redirect_uri"] = redirect, ["grant_type"] = "authorization_code" };
         if (settings.ClientSecret.Length > 0) form["client_secret"] = settings.ClientSecret; var json = await PostTokenAsync(form, ct); ApplyToken(json);
-        settings.RefreshToken = json["refresh_token"]?.GetValue<string>() ?? ""; settings.AuthorizedScopeVersion = ScopeVersion; SettingsStore.Save(settings);
+        settings.RefreshToken = json["refresh_token"]?.GetValue<string>() ?? ""; settings.AuthorizedScopeVersion = ScopeVersion; await saveSettingsAsync(settings, ct);
     }
 
     async Task RefreshAsync(CancellationToken ct)
@@ -216,5 +229,8 @@ internal sealed class GoogleApi : IDisposable
     }
     static string Base64(byte[] bytes) => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
     static int FreePort() { using var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start(); var port = ((IPEndPoint)listener.LocalEndpoint).Port; listener.Stop(); return port; }
-    public void Dispose() => http.Dispose();
+    public void Dispose()
+    {
+        if (ownsHttpClient) http.Dispose();
+    }
 }
