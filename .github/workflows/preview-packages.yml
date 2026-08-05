@@ -406,4 +406,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.validate-context.outputs.release_tag }}
+          TRUSTED_RELEASE_RECOVERY: ${{ github.event_name == 'workflow_dispatch' && needs.validate-context.outputs.is_release == 'true' }}
         run: scripts/publish-preview-release.sh "$RELEASE_TAG" "${{ needs.validate-context.outputs.preview_version }}" release-bundle

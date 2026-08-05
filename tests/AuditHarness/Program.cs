@@ -198,6 +198,8 @@ Check(releaseScript.Contains("gh release create", StringComparison.Ordinal) && r
       !releaseScript.Contains("releases/tags/$tag", StringComparison.Ordinal) && releaseScript.Contains("and .draft == true", StringComparison.Ordinal) &&
       releaseScript.Contains("draft=false", StringComparison.Ordinal) &&
       releaseScript.Contains("cleanup_failed_draft", StringComparison.Ordinal) &&
+      releaseScript.Contains("TRUSTED_RELEASE_RECOVERY", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("TRUSTED_RELEASE_RECOVERY: ${{ github.event_name == 'workflow_dispatch'", StringComparison.Ordinal) &&
       releaseScript.Contains("macOS-arm64-Preview.dmg", StringComparison.Ordinal),
     "Release publication is draft-first, exact-asset verified, fail-closed, and includes all native deliverables");
 Check(File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), ".gitattributes")).Contains("*.sh text eol=lf", StringComparison.Ordinal),
