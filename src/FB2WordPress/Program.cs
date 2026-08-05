@@ -33,8 +33,8 @@ internal static class CrashReporter
     {
         try
         {
-            var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "FB2WordPress Reports");
-            Directory.CreateDirectory(folder); var path = Path.Combine(folder, L.T("error_file", DateTime.Now.ToString("yyyyMMdd-HHmmss"))); File.WriteAllText(path, error.ToString()); return path;
+            var folder = PlatformPaths.EnsureReportsDirectory();
+            var path = Path.Combine(folder, L.T("error_file", DateTime.Now.ToString("yyyyMMdd-HHmmss"))); File.WriteAllText(path, error.ToString()); return path;
         }
         catch { return L.T("error_log_unavailable"); }
     }

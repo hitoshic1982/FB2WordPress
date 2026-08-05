@@ -1,30 +1,72 @@
-name: Windows CI
+name: Cross-platform CI
 
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
+    branches: [main]
+  schedule:
+    - cron: '17 18 * * 1'
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  validate:
-    runs-on: windows-latest
+  core:
+    name: Core and desktop shell (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
         with:
           dotnet-version: 10.0.x
-      - name: Build
-        run: dotnet build src/FB2WordPress/FB2WordPress.csproj -c Release --nologo
-      - name: Regression audit
-        run: dotnet run --project tests/AuditHarness/WordPressAuditHarness.csproj -c Release
-      - name: Publish portable executable
-        run: dotnet publish src/FB2WordPress/FB2WordPress.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts
-      - name: Upload executable
-        uses: actions/upload-artifact@v7
+      - name: Build shared core
+        run: dotnet build src/FB2WordPress.Core/FB2WordPress.Core.csproj -c Release --nologo
+      - name: Cross-platform core regression audit
+        run: dotnet run --project tests/CoreAudit/FB2WordPress.Core.Audit.csproj -c Release
+      - name: Build Avalonia desktop foundation
+        run: dotnet build src/FB2WordPress.Desktop/FB2WordPress.Desktop.csproj -c Release --nologo
+
+  windows:
+    name: Existing Windows application
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
         with:
-          name: FB2WordPress-v1.1.0-Windows-x64
+          dotnet-version: 10.0.x
+      - name: Build existing WinForms application
+        run: dotnet build src/FB2WordPress/FB2WordPress.csproj -c Release --nologo
+      - name: Existing Windows regression audit
+        run: dotnet run --project tests/AuditHarness/WordPressAuditHarness.csproj -c Release
+      - name: Resolve package version
+        id: package_version
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_type }}" -eq "tag") {
+            $version = "${{ github.ref_name }}" -replace '^[vV]', ''
+          } else {
+            $version = (dotnet msbuild src/FB2WordPress/FB2WordPress.csproj -nologo -getProperty:Version).Trim()
+          }
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw "Unable to resolve the FB2WordPress package version."
+          }
+          $version = $version -replace '[^0-9A-Za-z._-]', '-'
+          "value=$version" >> $env:GITHUB_OUTPUT
+      - name: Publish portable executable
+        run: dotnet publish src/FB2WordPress/FB2WordPress.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version=${{ steps.package_version.outputs.value }} -o artifacts
+      - name: Upload executable
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: FB2WordPress-v${{ steps.package_version.outputs.value }}-Windows-x64
           path: artifacts/FB2WordPress.exe

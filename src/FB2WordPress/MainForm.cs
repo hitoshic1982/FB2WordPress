@@ -41,7 +41,7 @@ internal sealed class MainForm : Form
     public MainForm(AppSettings settings)
     {
         this.settings = settings;
-        Text = "FB2WordPress"; Width = 900; Height = 650; MinimumSize = new(760, 560); StartPosition = FormStartPosition.CenterScreen; Font = new(L.FontName, 10);
+        Text = "FB2WordPress"; Width = 900; Height = 650; MinimumSize = new(760, 560); StartPosition = FormStartPosition.CenterScreen; Font = new(PlatformPresentation.FontName, 10);
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new(16), ColumnCount = 1, RowCount = 8 };
         layout.RowStyles.Add(new(SizeType.Absolute, 58)); layout.RowStyles.Add(new(SizeType.Absolute, 55)); layout.RowStyles.Add(new(SizeType.Absolute, 44)); layout.RowStyles.Add(new(SizeType.Absolute, 64)); layout.RowStyles.Add(new(SizeType.Absolute, 35)); layout.RowStyles.Add(new(SizeType.Absolute, 34)); layout.RowStyles.Add(new(SizeType.Percent, 100)); layout.RowStyles.Add(new(SizeType.Absolute, 42));
         layout.Controls.Add(new Label { Text = "FB2WordPress", Font = new("Microsoft JhengHei UI", 22, FontStyle.Bold), AutoSize = true });
@@ -73,7 +73,7 @@ internal sealed class MainForm : Form
     {
         var panel = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new(16), ColumnCount = 1, RowCount = 8 };
         panel.RowStyles.Add(new(SizeType.Absolute, 42)); panel.RowStyles.Add(new(SizeType.Absolute, 45)); panel.RowStyles.Add(new(SizeType.Percent, 55)); panel.RowStyles.Add(new(SizeType.Absolute, 34)); panel.RowStyles.Add(new(SizeType.Percent, 45)); panel.RowStyles.Add(new(SizeType.Absolute, 42)); panel.RowStyles.Add(new(SizeType.Absolute, 60)); panel.RowStyles.Add(new(SizeType.Absolute, 32));
-        panel.Controls.Add(new Label { Text = L.T("compose_heading"), Font = new(L.FontName, 18, FontStyle.Bold), AutoSize = true });
+        panel.Controls.Add(new Label { Text = L.T("compose_heading"), Font = new(PlatformPresentation.FontName, 18, FontStyle.Bold), AutoSize = true });
         panel.Controls.Add(composeTitle); panel.Controls.Add(composeBody);
         panel.Controls.Add(new Label { Text = L.T("media_heading"), AutoSize = true }); panel.Controls.Add(composeMedia);
         var mediaButtons = new FlowLayoutPanel { Dock = DockStyle.Fill }; mediaButtons.Controls.Add(addMedia); mediaButtons.Controls.Add(removeMedia); mediaButtons.Controls.Add(composeDraft); panel.Controls.Add(mediaButtons);
@@ -110,7 +110,7 @@ internal sealed class MainForm : Form
         cts = new(); ToggleBusy(true);
         try
         {
-            using var api = new GoogleApi(settings, Say); await api.EnsureAuthorizedAsync(cts.Token);
+            using var api = new GoogleApi(settings, Say, SettingsStore.SaveAsync); await api.EnsureAuthorizedAsync(cts.Token);
             if (isRetry)
             {
                 Say(L.T("checking_previous_publish"));
@@ -223,7 +223,7 @@ internal sealed class MainForm : Form
         }
         try
         {
-            ToggleBusy(true); using var api = new GoogleApi(settings, Say); await api.EnsureAuthorizedAsync(CancellationToken.None);
+            ToggleBusy(true); using var api = new GoogleApi(settings, Say, SettingsStore.SaveAsync); await api.EnsureAuthorizedAsync(CancellationToken.None);
             var blogs = await api.GetBlogsAsync(CancellationToken.None);
             if (blogs.Count == 0) throw new InvalidOperationException(L.P("無法讀取 WordPress 網站，請檢查網址與應用程式密碼。", "无法读取 WordPress 网站，请检查地址与应用程序密码。", "Unable to read the WordPress site. Check the URL and application password.", "WordPress サイトを読み込めません。URLとアプリケーションパスワードを確認してください。"));
             BlogInfo selected = blogs[0];
@@ -253,7 +253,7 @@ internal sealed class MainForm : Form
             var legacyStateFile = SettingsStore.StateFile(zipPath.Text);
             var legacyCompleted = File.Exists(legacyStateFile) ? File.ReadAllLines(legacyStateFile).ToHashSet() : [];
             var migration = SettingsStore.LoadMigration(zipPath.Text);
-            using var api = new GoogleApi(settings, Say); await api.EnsureAuthorizedAsync(cts.Token);
+            using var api = new GoogleApi(settings, Say, SettingsStore.SaveAsync); await api.EnsureAuthorizedAsync(cts.Token);
 
             Say(L.P("正在核對 WordPress，找出已刪除或已存在的文章…", "正在核对 WordPress，查找已删除或已存在的文章…", "Checking WordPress for deleted or existing posts…", "削除済みまたは既存の記事を WordPress で確認しています…"));
             var bloggerPosts = await api.GetAllPostsAsync(settings.BlogId, cts.Token);
@@ -351,12 +351,11 @@ internal sealed class MainForm : Form
         string backupPath = "";
         try
         {
-            using var api = new GoogleApi(settings, Say); await api.EnsureAuthorizedAsync(cts.Token);
+            using var api = new GoogleApi(settings, Say, SettingsStore.SaveAsync); await api.EnsureAuthorizedAsync(cts.Token);
             whitespaceStatus.Text = L.P("正在分頁讀取 WordPress 文章…", "正在分页读取 WordPress 文章…", "Reading WordPress posts page by page…", "WordPress 記事をページごとに読み込んでいます…");
             var posts = await api.GetAllPostsAsync(settings.BlogId, cts.Token); total = posts.Count;
 
-            var reportFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "FB2WordPress Reports");
-            Directory.CreateDirectory(reportFolder);
+            var reportFolder = PlatformPaths.EnsureReportsDirectory();
             backupPath = Path.Combine(reportFolder, L.P("空白行整理備份-{0:yyyyMMdd-HHmmss}.jsonl", "空行整理备份-{0:yyyyMMdd-HHmmss}.jsonl", "blank-line-cleanup-backup-{0:yyyyMMdd-HHmmss}.jsonl", "空行整理バックアップ-{0:yyyyMMdd-HHmmss}.jsonl", DateTime.Now));
             await using var backup = new StreamWriter(backupPath, false, new UTF8Encoding(false));
 
@@ -458,7 +457,7 @@ internal sealed class MainForm : Form
         var changed = 0; var skipped = 0; var failed = 0;
         try
         {
-            Directory.CreateDirectory(temp); using var api = new GoogleApi(settings, Say); await api.EnsureAuthorizedAsync(cts.Token);
+            Directory.CreateDirectory(temp); using var api = new GoogleApi(settings, Say, SettingsStore.SaveAsync); await api.EnsureAuthorizedAsync(cts.Token);
             var posts = await api.GetAllPostsAsync(settings.BlogId, cts.Token); var media = await api.GetMediaImagesAsync(cts.Token);
             using var downloader = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
             for (var i = 0; i < media.Count; i++)
@@ -503,7 +502,7 @@ internal sealed class MainForm : Form
         var reportNote = L.P("報告未能寫入，但搬家進度已安全保存。", "报告无法写入，但迁移进度已安全保存。", "The report could not be written, but migration progress was saved safely.", "レポートを書き込めませんでしたが、移行の進捗は安全に保存されています。");
         try
         {
-            var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "FB2WordPress Reports");
+            var folder = PlatformPaths.EnsureReportsDirectory();
             Directory.CreateDirectory(folder); var path = Path.Combine(folder, L.P("搬家報告-{0:yyyyMMdd-HHmmss}.txt", "迁移报告-{0:yyyyMMdd-HHmmss}.txt", "migration-report-{0:yyyyMMdd-HHmmss}.txt", "移行レポート-{0:yyyyMMdd-HHmmss}.txt", DateTime.Now));
             File.WriteAllText(path, text, Encoding.UTF8); reportNote = L.P("報告已保存到「文件\\FB2WordPress Reports」。", "报告已保存到“文档\\FB2WordPress Reports”。", "The report was saved in Documents\\FB2WordPress Reports.", "レポートを「ドキュメント\\FB2WordPress Reports」に保存しました。");
         }

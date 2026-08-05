@@ -1,10 +1,14 @@
 # FB2WordPress
 <p align="center">
-  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml"><img alt="Windows CI" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml"><img alt="Cross-platform CI" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/codeql.yml/badge.svg"></a>
+  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/security-audit.yml"><img alt="Security Audit / NuGet" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/security-audit.yml/badge.svg"></a>
+  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/secret-defense.yml"><img alt="Secret Defense / Gitleaks" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/secret-defense.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/hitoshic1982/FB2WordPress?label=release"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+  <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&amp;logoColor=white">
+  <img alt="Four interface languages" src="https://img.shields.io/badge/interface%20languages-4-informational">
 </p>
-
 
 [繁體中文](README.md) · [简体中文](README.zh-CN.md) · [English](README.en.md) · [日本語](README.ja.md)
 
@@ -56,7 +60,13 @@
 
 詳見 [PRIVACY.md](PRIVACY.md) 與 [SECURITY.md](SECURITY.md)。
 
+## 跨平台開發狀態
+
+目前只有 Windows WinForms 版具備完整搬家、圖片處理與安全憑證流程。共用核心與 Avalonia 最小入口已能在 Windows、macOS、Linux 的 CI 建置與測試，但這不等於 macOS／Linux 完整版已完成或通過實機驗證。支援矩陣、安全儲存原則與後續路線請見 [跨平台開發說明](docs/CROSS_PLATFORM.md)。
+
 ## 開發者入口
+
+> 「劍，我已鍛成；餘下的路，就交給你們了。」詳見[炎劍開源軟體家族品質標準](CONTRIBUTING.md)。
 
 ```powershell
 dotnet build src/FB2WordPress/FB2WordPress.csproj -c Release

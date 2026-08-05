@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace FB2WordPress;
 
-internal static partial class FacebookParser
+public static partial class FacebookParser
 {
     [GeneratedRegex(@"(?<![\p{L}\p{N}_])#([\p{L}\p{N}_-]+)")]
     private static partial Regex HashtagRegex();

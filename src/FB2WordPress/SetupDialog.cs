@@ -16,14 +16,14 @@ internal sealed class SetupDialog : Form
     {
         Settings = settings; Text = L.T("setup_title"); Width = 640; Height = 650;
         FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false;
-        StartPosition = FormStartPosition.CenterParent; Font = new(L.FontName, 10);
+        StartPosition = FormStartPosition.CenterParent; Font = new(PlatformPresentation.FontName, 10);
         site.Text = settings.SiteUrl; user.Text = settings.WordPressUser; password.Text = settings.WordPressAppPassword;
         clientId.Text = settings.ClientId; secret.Text = settings.ClientSecret;
         language.DataSource = L.Supported.ToArray();
         language.SelectedIndex = Math.Max(0, Array.FindIndex(L.Supported, item => item.Code == (string.IsNullOrEmpty(settings.InterfaceLanguage) ? L.Language : settings.InterfaceLanguage)));
         privacy.Items.AddRange([L.T("privacy_private"), L.T("privacy_unlisted"), L.T("privacy_public")]);
         privacy.SelectedIndex = settings.VideoPrivacy switch { "public" => 2, "unlisted" => 1, _ => 0 }; draft.Checked = settings.CreateAsDraft;
-        var note = new Label { AutoSize = false, Width = 560, Height = 135, Text = L.T("setup_note") };
+        var note = new Label { AutoSize = false, Width = 560, Height = 135, Text = L.T("setup_note") + "\r\n\r\n" + PlatformPresentation.SecureStorageNote };
         var save = new Button { Text = L.T("save_test"), AutoSize = true, Height = 38 };
         var cancel = new Button { Text = L.T("cancel"), AutoSize = true, DialogResult = DialogResult.Cancel };
         save.Click += (_, _) =>

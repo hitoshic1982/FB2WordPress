@@ -1,14 +1,13 @@
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 
 namespace FB2WordPress;
 
 internal static class SettingsStore
 {
-    static readonly string Folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FB2WordPress");
+    static readonly string Folder = PlatformPaths.LocalDataDirectory;
     static readonly string FileName = Path.Combine(Folder, "settings.dat");
-    static readonly JsonSerializerOptions StateJsonOptions = new() { WriteIndented = true };
+    static readonly MigrationStateStore MigrationStore = new(Folder);
 
     public static AppSettings Load()
     {
@@ -45,37 +44,18 @@ internal static class SettingsStore
         File.Move(temp, FileName, true);
     }
 
-    public static string StateFile(string zipPath)
+    public static Task SaveAsync(AppSettings settings, CancellationToken cancellationToken = default)
     {
-        var key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(zipPath))));
-        Directory.CreateDirectory(Folder);
-        return Path.Combine(Folder, $"completed-{key}.txt");
+        cancellationToken.ThrowIfCancellationRequested();
+        Save(settings);
+        return Task.CompletedTask;
     }
 
-    public static string DetailedStateFile(string zipPath) => Path.ChangeExtension(StateFile(zipPath), ".json");
+    public static string StateFile(string zipPath) => MigrationStore.LegacyStateFile(zipPath);
 
-    public static MigrationState LoadMigration(string zipPath)
-    {
-        try
-        {
-            var path = DetailedStateFile(zipPath);
-            if (!File.Exists(path)) return new();
-            try { return JsonSerializer.Deserialize<MigrationState>(File.ReadAllText(path)) ?? new(); }
-            catch (JsonException) when (File.Exists(path + ".bak"))
-            {
-                return JsonSerializer.Deserialize<MigrationState>(File.ReadAllText(path + ".bak")) ?? new();
-            }
-        }
-        catch { return new(); }
-    }
+    public static string DetailedStateFile(string zipPath) => MigrationStore.DetailedStateFile(zipPath);
 
-    public static void SaveMigration(string zipPath, MigrationState state)
-    {
-        Directory.CreateDirectory(Folder);
-        var path = DetailedStateFile(zipPath);
-        var temp = path + ".tmp";
-        File.WriteAllText(temp, JsonSerializer.Serialize(state, StateJsonOptions));
-        if (File.Exists(path)) File.Replace(temp, path, path + ".bak", true);
-        else File.Move(temp, path);
-    }
+    public static MigrationState LoadMigration(string zipPath) => MigrationStore.Load(zipPath);
+
+    public static void SaveMigration(string zipPath, MigrationState state) => MigrationStore.Save(zipPath, state);
 }
