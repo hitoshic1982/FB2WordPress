@@ -6,6 +6,7 @@ internal sealed record FacebookPost(string Key, string Title, string Text, DateT
 
 internal sealed class AppSettings
 {
+    public string InterfaceLanguage { get; set; } = "";
     public string SiteUrl { get; set; } = "";
     public string WordPressUser { get; set; } = "";
     public string WordPressAppPassword { get; set; } = "";

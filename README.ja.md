@@ -1,4 +1,10 @@
 # FB2WordPress
+<p align="center">
+  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml"><img alt="Windows CI" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/hitoshic1982/FB2WordPress/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/hitoshic1982/FB2WordPress?label=release"></a>
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+</p>
+
 
 [繁體中文](README.md) · [简体中文](README.zh-CN.md) · [English](README.en.md) · [日本語](README.ja.md)
 
@@ -61,5 +67,14 @@ dotnet run --project tests/AuditHarness/WordPressAuditHarness.csproj -c Release
 ## ライセンスと責任
 
 [MIT License](LICENSE) で公開しています。本プロジェクトは Meta、Facebook、Automattic、WordPress Foundation、Google、YouTube と提携または公認されたものではありません。権利を持つコンテンツだけを移行し、各サービスの規約、著作権、個人情報保護法令を守ってください。
+
+## 任意のご支援
+
+FB2WordPress は MIT ライセンスのもとですべての機能を公開しています。移行、画像最適化、記事整理の機能は、支援の有無にかかわらず同一です。コンテンツを自分のドメインへ取り戻す助けになった場合は、炎剣文化工作室の継続的な保守を任意でご支援いただけます。
+
+- [Buy Me a Coffee](https://buymeacoffee.com/flameblade_studio)
+- [PayPal.Me](https://www.paypal.com/paypalme/flamebladestudio)
+
+ご支援は利用条件ではありません。実環境での報告、互換性に関する情報、プルリクエストも多くのクリエイターを助けます。
 
 作者：CHOU MING HUA／Flameblade Studio · [公式サイト](https://www.flamebladestudio.com.tw/)

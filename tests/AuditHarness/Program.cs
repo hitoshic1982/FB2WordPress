@@ -5,10 +5,120 @@ using System.IO.Compression;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 var failures = new List<string>();
 void Check(bool condition, string name) { Console.WriteLine($"{(condition ? "PASS" : "FAIL")} {name}"); if (!condition) failures.Add(name); }
+
+static List<(int Start, int End)> LocalizedCallRanges(string source)
+{
+    var ranges = new List<(int, int)>();
+    var searchFrom = 0;
+    while (true)
+    {
+        var start = source.IndexOf("L.P(", searchFrom, StringComparison.Ordinal);
+        if (start < 0) return ranges;
+        var end = MatchingCallEnd(source, start + 3);
+        if (end < 0) return ranges;
+        ranges.Add((start, end));
+        searchFrom = end;
+    }
+}
+
+static int MatchingCallEnd(string source, int openParenthesis)
+{
+    var depth = 0;
+    var inString = false;
+    var verbatimString = false;
+    var inCharacter = false;
+    var lineComment = false;
+    var blockComment = false;
+    for (var i = openParenthesis; i < source.Length; i++)
+    {
+        var current = source[i];
+        var next = i + 1 < source.Length ? source[i + 1] : '\0';
+        if (lineComment)
+        {
+            if (current == '\n') lineComment = false;
+            continue;
+        }
+        if (blockComment)
+        {
+            if (current == '*' && next == '/') { blockComment = false; i++; }
+            continue;
+        }
+        if (inString)
+        {
+            if (verbatimString && current == '"' && next == '"') { i++; continue; }
+            if (!verbatimString && current == '\\') { i++; continue; }
+            if (current == '"') { inString = false; verbatimString = false; }
+            continue;
+        }
+        if (inCharacter)
+        {
+            if (current == '\\') { i++; continue; }
+            if (current == '\'') inCharacter = false;
+            continue;
+        }
+        if (current == '/' && next == '/') { lineComment = true; i++; continue; }
+        if (current == '/' && next == '*') { blockComment = true; i++; continue; }
+        if (current == '"') { inString = true; verbatimString = i > 0 && source[i - 1] == '@'; continue; }
+        if (current == '\'') { inCharacter = true; continue; }
+        if (current == '(') depth++;
+        else if (current == ')' && --depth == 0) return i + 1;
+    }
+    return -1;
+}
+
 var assembly = Assembly.Load("FB2WordPress");
+
+foreach (var readmeName in new[] { "README.md", "README.zh-CN.md", "README.en.md", "README.ja.md" })
+{
+    var readme = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), readmeName));
+    Check(readme.Contains("actions/workflows/ci.yml/badge.svg", StringComparison.Ordinal), $"{readmeName} shows real Windows CI status");
+    Check(readme.Contains("img.shields.io/github/v/release/hitoshic1982/FB2WordPress", StringComparison.Ordinal), $"{readmeName} shows the latest release");
+    Check(readme.Contains("license-MIT-blue.svg", StringComparison.Ordinal), $"{readmeName} shows the MIT license");
+    Check(readme.Contains("https://buymeacoffee.com/flameblade_studio", StringComparison.Ordinal) && readme.Contains("https://www.paypal.com/paypalme/flamebladestudio", StringComparison.OrdinalIgnoreCase), $"{readmeName} includes both voluntary support links");
+    Check(!readme.Contains("\n+<p align=\"center\">", StringComparison.Ordinal), $"{readmeName} has no stray patch marker");
+}
+
+// Localization: verify the public language contract and every translated value.
+var localizer = assembly.GetType("FB2WordPress.L", true)!;
+var supportedCodes = ((IEnumerable)localizer.GetProperty("SupportedCodes", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!).Cast<string>().ToArray();
+Check(supportedCodes.SequenceEqual(new[] { "zh-TW", "zh-CN", "en", "ja" }), "Four interface languages are available in the intended order");
+var localizationKeys = ((IEnumerable)localizer.GetProperty("Keys", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!).Cast<string>().ToArray();
+Check(localizationKeys.Length >= 45, "Localization covers setup and WordPress-specific tools");
+var configureLanguage = localizer.GetMethod("Configure", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)!;
+var translate = localizer.GetMethod("T", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)!;
+var phrase = localizer.GetMethod("P", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)!;
+var sampleTranslations = new[] { "traditional", "simplified", "english", "japanese" };
+foreach (var code in supportedCodes)
+{
+    configureLanguage.Invoke(null, new object?[] { code });
+    Check(localizationKeys.All(key => !string.Equals((string)translate.Invoke(null, new object[] { key, Array.Empty<object>() })!, key, StringComparison.Ordinal)), $"Every localization key resolves in {code}");
+    var expected = sampleTranslations[Array.IndexOf(supportedCodes, code)];
+    Check((string)phrase.Invoke(null, new object[] { sampleTranslations[0], sampleTranslations[1], sampleTranslations[2], sampleTranslations[3], Array.Empty<object>() })! == expected, $"Inline four-language phrase selects {code}");
+}
+configureLanguage.Invoke(null, new object?[] { "unsupported" });
+
+// All East Asian production string literals must either be in the central
+// catalog or inside an explicit four-language L.P(...) call.
+var sourceRoot = Path.Combine(Directory.GetCurrentDirectory(), "src", "FB2WordPress");
+var eastAsianLiteral = new Regex(@"""(?:\\.|[^""\\])*[\u3040-\u30ff\u3400-\u9fff](?:\\.|[^""\\])*""", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2));
+var hardcodedUserText = new List<string>();
+foreach (var file in Directory.EnumerateFiles(sourceRoot, "*.cs", SearchOption.AllDirectories).Where(path => !path.EndsWith("Localization.cs", StringComparison.OrdinalIgnoreCase)))
+{
+    var source = File.ReadAllText(file);
+    var ranges = LocalizedCallRanges(source);
+    foreach (Match match in eastAsianLiteral.Matches(source))
+    {
+        if (ranges.Any(range => match.Index >= range.Start && match.Index < range.End)) continue;
+        var line = source.AsSpan(0, match.Index).Count('\n') + 1;
+        hardcodedUserText.Add($"{Path.GetRelativePath(Directory.GetCurrentDirectory(), file)}:{line}");
+    }
+}
+if (hardcodedUserText.Count > 0) Console.Error.WriteLine("Unlocalized user-facing text: " + string.Join(", ", hardcodedUserText));
+Check(hardcodedUserText.Count == 0, "No production user-facing East Asian string bypasses four-language localization");
 
 var root = Path.Combine(Path.GetTempPath(), "FB2WordPress-Audit-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(root);
