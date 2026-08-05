@@ -152,10 +152,11 @@ Check(previewWorkflow.Contains("actions/attest@59d89421af93a897026c735860bf21b6e
     "Only the exact tag-gated trusted job receives release and commit-pinned attestation permissions");
 Check(previewWorkflow.Contains("^v1\\.1\\.0-rc\\.([1-9][0-9]*)$", StringComparison.Ordinal) &&
       previewWorkflow.Contains("git merge-base --is-ancestor \"$build_commit\" refs/remotes/origin/main", StringComparison.Ordinal) &&
-      previewWorkflow.Contains("refs/tags/$GITHUB_REF_NAME^{commit}", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("refs/tags/$RELEASE_TAG^{commit}", StringComparison.Ordinal) &&
       previewWorkflow.Contains("Release tag moved after validation", StringComparison.Ordinal) &&
       previewWorkflow.Contains("ref: ${{ needs.validate-context.outputs.build_commit }}", StringComparison.Ordinal) &&
-      previewWorkflow.Contains("$GITHUB_REF_NAME\" == \"v$version", StringComparison.Ordinal),
+      previewWorkflow.Contains("$release_tag\" != \"v$version", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("Existing v1.1.0-rc.N tag to rebuild and publish", StringComparison.Ordinal),
     "Release gate requires an exact nonzero RC tag, a peeled immutable build commit, matching source version, origin/main ancestry, and a final remote-tag recheck");
 Check(previewWorkflow.Contains("Microsoft.Sbom.DotNetTool --version 4.1.5", StringComparison.Ordinal) &&
       previewWorkflow.Contains("SHA256SUMS.txt", StringComparison.Ordinal),
@@ -193,7 +194,9 @@ Check(windowsSmokeScript.Contains("Start-Process", StringComparison.Ordinal) && 
     "Windows smoke test verifies the adjacent MIT LICENSE, launches the final complete EXE, and proves liveness");
 Check(releaseScript.Contains("gh release create", StringComparison.Ordinal) && releaseScript.Contains("--draft", StringComparison.Ordinal) &&
       releaseScript.Contains("--prerelease", StringComparison.Ordinal) && releaseScript.Contains("--verify-tag", StringComparison.Ordinal) &&
-      releaseScript.Contains("gh release upload", StringComparison.Ordinal) && releaseScript.Contains("draft=false", StringComparison.Ordinal) &&
+      releaseScript.Contains("gh release create \"$tag\" \"${upload_paths[@]}\"", StringComparison.Ordinal) &&
+      !releaseScript.Contains("releases/tags/$tag", StringComparison.Ordinal) && releaseScript.Contains("and .draft == true", StringComparison.Ordinal) &&
+      releaseScript.Contains("draft=false", StringComparison.Ordinal) &&
       releaseScript.Contains("cleanup_failed_draft", StringComparison.Ordinal) &&
       releaseScript.Contains("macOS-arm64-Preview.dmg", StringComparison.Ordinal),
     "Release publication is draft-first, exact-asset verified, fail-closed, and includes all native deliverables");

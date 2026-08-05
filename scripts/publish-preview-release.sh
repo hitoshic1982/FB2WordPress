@@ -48,7 +48,8 @@ done
 cmp -s "$notes" "$bundle_dir/$notes" || { echo "Bundled release notes differ from the reviewed source file." >&2; exit 66; }
 (cd "$bundle_dir" && sha256sum --check --strict SHA256SUMS.txt)
 
-if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+existing_id="$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq ".[] | select(.tag_name == \"$tag\") | .id" | head -n 1)"
+if [[ -n "$existing_id" ]]; then
   echo "A GitHub Release already exists for $tag; refusing to overwrite it." >&2
   exit 67
 fi
@@ -67,19 +68,17 @@ trap cleanup_failed_draft EXIT
 
 # Draft first: a failed upload or verification can never expose a partial
 # prerelease. Cleanup deletes only the draft Release record, never the tag.
-gh release create "$tag" \
+upload_paths=()
+for name in "${expected[@]}"; do upload_paths+=("$bundle_dir/$name"); done
+gh release create "$tag" "${upload_paths[@]}" \
   --repo "$GITHUB_REPOSITORY" \
   --verify-tag \
   --draft \
   --prerelease \
   --title "FB2WordPress $version Preview" \
   --notes-file "$notes"
-release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" --jq '.id')"
+release_id="$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq ".[] | select(.tag_name == \"$tag\" and .draft == true) | .id" | head -n 1)"
 [[ "$release_id" =~ ^[0-9]+$ ]] || { echo "Unable to resolve the draft Release ID." >&2; exit 68; }
-
-upload_paths=()
-for name in "${expected[@]}"; do upload_paths+=("$bundle_dir/$name"); done
-gh release upload "$tag" "${upload_paths[@]}" --repo "$GITHUB_REPOSITORY"
 
 mapfile -t actual_assets < <(gh api --paginate "repos/$GITHUB_REPOSITORY/releases/$release_id/assets" --jq '.[].name' | sort)
 mapfile -t expected_assets < <(printf '%s\n' "${expected[@]}" | sort)

@@ -9,6 +9,11 @@ on:
   schedule:
     - cron: '23 19 * * 4'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing v1.1.0-rc.N tag to rebuild and publish after a recoverable release-only failure
+        required: false
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -27,6 +32,7 @@ jobs:
       preview_version: ${{ steps.release_gate.outputs.preview_version }}
       is_release: ${{ steps.release_gate.outputs.is_release }}
       build_commit: ${{ steps.release_gate.outputs.build_commit }}
+      release_tag: ${{ steps.release_gate.outputs.release_tag }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -37,40 +43,52 @@ jobs:
       - name: Fail closed unless an RC tag is exact and belongs to main
         id: release_gate
         shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          version="$(dotnet msbuild src/FB2WordPress.Desktop/FB2WordPress.Desktop.csproj -nologo -getProperty:PreviewVersion | tail -n 1 | tr -d '\r')"
-          [[ "$version" =~ ^1\.1\.0-rc\.([1-9][0-9]*)$ ]] || {
-            echo "PreviewVersion must match 1.1.0-rc.N with N greater than zero: $version" >&2
-            exit 1
-          }
-
           is_release=false
           build_commit="$GITHUB_SHA"
+          release_tag=""
           if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF_TYPE" == "tag" ]]; then
-            [[ "$GITHUB_REF_NAME" =~ ^v1\.1\.0-rc\.([1-9][0-9]*)$ ]] || {
-              echo "Release tag must match v1.1.0-rc.N with N greater than zero: $GITHUB_REF_NAME" >&2
+            release_tag="$GITHUB_REF_NAME"
+          elif [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && -n "$INPUT_TAG" ]]; then
+            release_tag="$INPUT_TAG"
+            git fetch --force --no-tags origin "refs/tags/$release_tag:refs/tags/$release_tag"
+          elif [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            echo "Tag events other than an exact push are not trusted release contexts." >&2
+            exit 1
+          fi
+
+          if [[ -n "$release_tag" ]]; then
+            [[ "$release_tag" =~ ^v1\.1\.0-rc\.([1-9][0-9]*)$ ]] || {
+              echo "Release tag must match v1.1.0-rc.N with N greater than zero: $release_tag" >&2
               exit 1
             }
-            [[ "$GITHUB_REF_NAME" == "v$version" ]] || {
-              echo "Tag $GITHUB_REF_NAME does not match PreviewVersion v$version." >&2
-              exit 1
-            }
-            build_commit="$(git rev-parse "refs/tags/$GITHUB_REF_NAME^{commit}")"
+            build_commit="$(git rev-parse "refs/tags/$release_tag^{commit}")"
             git fetch --force --no-tags origin refs/heads/main:refs/remotes/origin/main
             git merge-base --is-ancestor "$build_commit" refs/remotes/origin/main || {
               echo "Tagged commit $build_commit is not contained in origin/main; refusing release." >&2
               exit 1
             }
+            git checkout --detach "$build_commit"
             is_release=true
-          elif [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
-            echo "Tag events other than an exact push are not trusted release contexts." >&2
+          fi
+
+          version="$(dotnet msbuild src/FB2WordPress.Desktop/FB2WordPress.Desktop.csproj -nologo -getProperty:PreviewVersion | tail -n 1 | tr -d '\r')"
+          [[ "$version" =~ ^1\.1\.0-rc\.([1-9][0-9]*)$ ]] || {
+            echo "PreviewVersion must match 1.1.0-rc.N with N greater than zero: $version" >&2
+            exit 1
+          }
+          if [[ -n "$release_tag" && "$release_tag" != "v$version" ]]; then
+            echo "Tag $release_tag does not match PreviewVersion v$version." >&2
             exit 1
           fi
 
           echo "preview_version=$version" >> "$GITHUB_OUTPUT"
           echo "is_release=$is_release" >> "$GITHUB_OUTPUT"
           echo "build_commit=$build_commit" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
 
   windows-package:
     name: Windows x64 complete EXE
@@ -304,10 +322,11 @@ jobs:
         shell: bash
         env:
           EXPECTED_COMMIT: ${{ needs.validate-context.outputs.build_commit }}
+          RELEASE_TAG: ${{ needs.validate-context.outputs.release_tag }}
         run: |
           set -euo pipefail
-          git fetch --force --no-tags origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
-          actual_commit="$(git rev-parse "refs/tags/$GITHUB_REF_NAME^{commit}")"
+          git fetch --force --no-tags origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          actual_commit="$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")"
           [[ "$actual_commit" == "$EXPECTED_COMMIT" ]] || {
             echo "Release tag moved after validation: expected $EXPECTED_COMMIT, found $actual_commit." >&2
             exit 1
@@ -386,4 +405,5 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: scripts/publish-preview-release.sh "$GITHUB_REF_NAME" "${{ needs.validate-context.outputs.preview_version }}" release-bundle
+          RELEASE_TAG: ${{ needs.validate-context.outputs.release_tag }}
+        run: scripts/publish-preview-release.sh "$RELEASE_TAG" "${{ needs.validate-context.outputs.preview_version }}" release-bundle
