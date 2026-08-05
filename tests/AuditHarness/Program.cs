@@ -145,14 +145,18 @@ Check(previewWorkflow.Contains("name: Required / Windows + macOS x64 + macOS arm
     "Every PR receives one fixed required gate that aggregates all four native packages");
 Check(previewWorkflow.Contains("actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26", StringComparison.Ordinal) &&
       previewWorkflow.Contains("actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c", StringComparison.Ordinal) &&
-      previewWorkflow.Contains("artifact-metadata: write", StringComparison.Ordinal) && previewWorkflow.Contains("id-token: write", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("artifact-metadata: write", StringComparison.Ordinal) && previewWorkflow.Contains("attestations: write", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("id-token: write", StringComparison.Ordinal) &&
       previewWorkflow.Contains("contents: write", StringComparison.Ordinal) &&
       previewWorkflow.Contains("if: needs.validate-context.outputs.is_release == 'true'", StringComparison.Ordinal),
     "Only the exact tag-gated trusted job receives release and commit-pinned attestation permissions");
 Check(previewWorkflow.Contains("^v1\\.1\\.0-rc\\.([1-9][0-9]*)$", StringComparison.Ordinal) &&
-      previewWorkflow.Contains("git merge-base --is-ancestor \"$GITHUB_SHA\" refs/remotes/origin/main", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("git merge-base --is-ancestor \"$build_commit\" refs/remotes/origin/main", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("refs/tags/$GITHUB_REF_NAME^{commit}", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("Release tag moved after validation", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("ref: ${{ needs.validate-context.outputs.build_commit }}", StringComparison.Ordinal) &&
       previewWorkflow.Contains("$GITHUB_REF_NAME\" == \"v$version", StringComparison.Ordinal),
-    "Release gate requires an exact nonzero RC tag, matching source version, and origin/main ancestry");
+    "Release gate requires an exact nonzero RC tag, a peeled immutable build commit, matching source version, origin/main ancestry, and a final remote-tag recheck");
 Check(previewWorkflow.Contains("Microsoft.Sbom.DotNetTool --version 4.1.5", StringComparison.Ordinal) &&
       previewWorkflow.Contains("SHA256SUMS.txt", StringComparison.Ordinal),
     "Preview artifact sets include a version-pinned SPDX generator and an aggregate SHA256 manifest");
