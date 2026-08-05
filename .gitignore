@@ -1,0 +1,15 @@
+bin/
+obj/
+artifacts/
+.vs/
+.vscode/
+*.user
+*.suo
+*.pdb
+*.zip
+*.exe
+settings.dat
+completed-*.json
+completed-*.json.bak
+completed-*.txt
+
