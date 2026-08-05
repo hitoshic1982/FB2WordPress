@@ -1,0 +1,65 @@
+# FB2WordPress
+
+[繁體中文](README.md) · [简体中文](README.zh-CN.md) · [English](README.en.md) · [日本語](README.ja.md)
+
+Facebook の公式ダウンロードデータに含まれる投稿・画像・動画を整理し、自分で管理する WordPress サイトへ移行する Windows デスクトップツールです。
+
+> SNS は読者と出会う場所、自分のサイトは作品が長く暮らす場所です。FB2WordPress は、投稿とメディアを自分で管理できるデジタル資産へ移す手助けをします。
+
+## 自分のサイトをブランドの本部にする
+
+2026 年 7 月、Flameblade Studio の Facebook ページが突然停止されました。先の見えない異議申立てだけに時間を使う代わりに、作者は Bluehost 上に WordPress の本拠地を作り、記事、画像、検索での発見性、ブランドへの入口を自分の管理下へ戻しました。FB2WordPress は、3 日間の再建で長年のコンテンツを新しい本部へ運ぶ中核ツールになりました。
+
+本アプリは、利用者本人が Facebook の「個人データをダウンロード」機能から取得した ZIP を読み、WordPress 公式 REST API で自分のサイトへ投稿します。Facebook への自動ログイン、スクレイピング、制限回避は行わず、停止されたアカウントやページを復旧する機能もありません。
+
+## SNS のバックアップから運営できるサイトへ
+
+- Facebook 公式エクスポートの投稿 JSON を解析し、一部の旧形式の文字化けも修復。
+- 投稿日時、本文、絵文字、ハッシュタグを保持し、ハッシュタグを WordPress タグへ変換。
+- 画像を安全に最適化してメディアライブラリへアップロード。動画は任意で YouTube へ送り、記事に埋め込み可能。
+- 下書きと非表示の識別マーカーで、公開前確認と重複防止に対応。
+- 中断後の再開、進捗ファイル破損時のバックアップ復元に対応。
+- 本ツールが取り込んだ記事だけを対象に、過剰な空行を整理。
+- ZIP パストラバーサルを防止し、元の ZIP と画像を変更しない設計。
+
+## 始める前にサイトを守る
+
+1. Windows 10/11 x64。
+2. HTTPS と REST API が有効な、自分で管理する WordPress サイト。
+3. WordPress のプロフィールで発行した専用の「アプリケーションパスワード」。通常のログインパスワードは使わないでください。
+4. Facebook から自分で取得した JSON 形式のデータ ZIP。
+5. YouTube へ動画を送る場合のみ、Google Desktop OAuth Client と YouTube Data API v3。
+6. [GitHub Releases](https://github.com/hitoshic1982/FB2WordPress/releases/latest) から最新版 `FB2WordPress.exe` を取得し、SHA256 を確認してください。
+
+## 初回移行の安全な進め方
+
+1. WordPress の URL、ユーザー名、専用アプリケーションパスワードを入力します。
+2. Facebook ZIP を選びます。
+3. 下書き／公開モードを選びます。初回は下書きを推奨します。
+4. 移行後にレポートを確認し、投稿・タグ・メディア・日付を抜き取り確認します。
+
+事前に WordPress をバックアップし、ステージングサイトまたは下書きで検証してください。ホスティング制限、REST API のファイアウォール、Facebook 形式の差、メディア量により、複数回に分ける場合があります。
+
+## サイト認証情報の扱い
+
+- WordPress アプリケーションパスワード、OAuth 情報、更新トークンは現在の Windows ユーザーの LocalAppData のみに保存し、Windows DPAPI で暗号化します。
+- リポジトリに作者の認証情報、トークン、Facebook データ、個人記事は含まれません。
+- アプリは利用者の WordPress と任意の Google API に直接接続し、Flameblade Studio の中継サーバーへ内容を送りません。
+- 本ツール専用の取消可能なアプリケーションパスワードを使い、不要になったら取り消してください。
+
+[PRIVACY.md](PRIVACY.md) と [SECURITY.md](SECURITY.md) もご覧ください。
+
+## 開発者向け
+
+```powershell
+dotnet build src/FB2WordPress/FB2WordPress.csproj -c Release
+dotnet run --project tests/AuditHarness/WordPressAuditHarness.csproj -c Release
+```
+
+.NET 10 SDK が必要です。Release の EXE は自己完結型の単一ファイルです。
+
+## ライセンスと責任
+
+[MIT License](LICENSE) で公開しています。本プロジェクトは Meta、Facebook、Automattic、WordPress Foundation、Google、YouTube と提携または公認されたものではありません。権利を持つコンテンツだけを移行し、各サービスの規約、著作権、個人情報保護法令を守ってください。
+
+作者：CHOU MING HUA／Flameblade Studio · [公式サイト](https://www.flamebladestudio.com.tw/)

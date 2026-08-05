@@ -1,0 +1,65 @@
+# FB2WordPress
+
+[繁體中文](README.md) · [简体中文](README.zh-CN.md) · [English](README.en.md) · [日本語](README.ja.md)
+
+一款 Windows 桌面工具，用于整理 Facebook 官方下载资料中的帖子、图片和视频，并迁移到自己管理的 WordPress 网站。
+
+> 社交平台适合接触读者，自己的网站才是内容长期安家的地方。FB2WordPress 帮助创作者把文章和媒体转化为自己掌控的数字资产。
+
+## 网站才是品牌总部
+
+2026 年 7 月，炎剑文化工作室的 Facebook 粉丝专页突然被停权。与其继续把时间耗在没有明确回应的申诉流程，作者选择在 Bluehost 建立 WordPress 主站，把文章、图片、搜索能见度和品牌入口重新掌握在自己手中。FB2WordPress 是这场三日重建行动中，把旧内容送回品牌总部的核心工具。
+
+本工具只读取由你本人通过 Facebook“下载你的信息”取得的 ZIP，并通过 WordPress 官方 REST API 写入你自己的网站。它不会登录、抓取或绕过 Facebook，也无法恢复被停权的账号或专页。
+
+## 从社交备份走向可经营的网站
+
+- 解析 Facebook 官方导出的帖子 JSON，并修复部分旧版编码乱码。
+- 保留时间、正文、Emoji 和 Hashtag；Hashtag 可建立为 WordPress 标签。
+- 图片经过安全优化后上传媒体库，视频可选上传 YouTube 并嵌入文章。
+- 支持草稿模式和隐藏识别标记，避免重复导入。
+- 保存迁移进度，可中断后继续，并能从备份恢复损坏的进度文件。
+- 只整理本工具导入文章的多余空行，不随意修改网站其他内容。
+- 阻止恶意 ZIP 路径穿越，不修改原始 ZIP 和原图。
+
+## 开始前先保护你的网站
+
+1. Windows 10/11 x64。
+2. 由你管理、启用 HTTPS 和 WordPress REST API 的网站。
+3. 在 WordPress 个人资料中建立专用“应用程序密码”，不要使用主登录密码。
+4. 从 Facebook 下载自己的 JSON 数据 ZIP。
+5. 只有需要上传 YouTube 视频时，才需 Google Desktop OAuth Client 和 YouTube Data API v3。
+6. 从 [GitHub Releases](https://github.com/hitoshic1982/FB2WordPress/releases/latest) 下载最新版 `FB2WordPress.exe` 并核对 SHA256。
+
+## 第一次迁移建议这样做
+
+1. 输入 WordPress 网站地址、用户名和专用应用程序密码。
+2. 选择 Facebook ZIP。
+3. 选择公开或草稿模式，首次建议使用草稿。
+4. 迁移后查看报告，并抽查文章、标签、媒体和日期。
+
+请先备份 WordPress，并使用测试站或草稿模式验证。主机限制、REST API 防火墙、Facebook 导出格式差异和大量媒体可能需要分批处理。
+
+## 网站凭证如何处理
+
+- WordPress 应用程序密码、OAuth 凭证和刷新令牌只存放于当前 Windows 用户的 LocalAppData，并以 Windows DPAPI 加密。
+- 仓库不包含作者的账号、密钥、令牌、Facebook 导出文件或个人文章。
+- 软件直接连接你的网站和选用的 Google API，不通过炎剑文化工作室的中转服务器。
+- 建议为本工具建立可撤销的专用应用程序密码，完成迁移后即可撤销。
+
+详见 [PRIVACY.md](PRIVACY.md) 与 [SECURITY.md](SECURITY.md)。
+
+## 开发者入口
+
+```powershell
+dotnet build src/FB2WordPress/FB2WordPress.csproj -c Release
+dotnet run --project tests/AuditHarness/WordPressAuditHarness.csproj -c Release
+```
+
+需要 .NET 10 SDK。Release 提供自包含单文件 EXE。
+
+## 开源与责任
+
+本项目采用 [MIT License](LICENSE)，与 Meta、Facebook、Automattic、WordPress Foundation、Google 或 YouTube 没有隶属或背书关系。请只迁移你有权处理的内容，并遵守平台条款、版权和个人信息法规。
+
+作者：CHOU MING HUA／炎剑文化工作室 · [官方网站](https://www.flamebladestudio.com.tw/)
