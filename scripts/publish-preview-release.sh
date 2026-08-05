@@ -16,8 +16,12 @@ notes="RELEASE_NOTES_v${version}.md"
   exit 65
 }
 [[ "$tag" == "v$version" ]] || { echo "Tag and PreviewVersion differ: $tag / $version" >&2; exit 65; }
-[[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF_TYPE" == "tag" ]] || {
-  echo "Publishing is allowed only for a tag push." >&2
+tag_push=false
+manual_recovery=false
+[[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF_TYPE" == "tag" ]] && tag_push=true
+[[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "${TRUSTED_RELEASE_RECOVERY:-}" == "true" ]] && manual_recovery=true
+[[ "$tag_push" == "true" || "$manual_recovery" == "true" ]] || {
+  echo "Publishing requires a tag push or a trusted, validated recovery dispatch." >&2
   exit 65
 }
 [[ -n "${GITHUB_REPOSITORY:-}" && -n "${GH_TOKEN:-}" ]] || {
