@@ -316,7 +316,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ needs.validate-context.outputs.build_commit }}
+          # A recovery run must use the repaired release orchestration from
+          # main while every package above remains built from the immutable tag.
+          ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || needs.validate-context.outputs.build_commit }}
           fetch-depth: 0
       - name: Reconfirm the remote tag still names the reviewed commit
         shell: bash

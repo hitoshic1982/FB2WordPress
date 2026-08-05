@@ -200,8 +200,9 @@ Check(releaseScript.Contains("gh release create", StringComparison.Ordinal) && r
       releaseScript.Contains("cleanup_failed_draft", StringComparison.Ordinal) &&
       releaseScript.Contains("TRUSTED_RELEASE_RECOVERY", StringComparison.Ordinal) &&
       previewWorkflow.Contains("TRUSTED_RELEASE_RECOVERY: ${{ github.event_name == 'workflow_dispatch'", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("github.event_name == 'workflow_dispatch' && 'main' || needs.validate-context.outputs.build_commit", StringComparison.Ordinal) &&
       releaseScript.Contains("macOS-arm64-Preview.dmg", StringComparison.Ordinal),
-    "Release publication is draft-first, exact-asset verified, fail-closed, and includes all native deliverables");
+    "Release publication is draft-first, exact-asset verified, fail-closed, recovery-safe, and includes all native deliverables");
 Check(File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), ".gitattributes")).Contains("*.sh text eol=lf", StringComparison.Ordinal),
     "Packaging shell scripts keep LF line endings on every checkout platform");
 
