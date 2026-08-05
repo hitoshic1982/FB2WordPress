@@ -13,8 +13,8 @@ jobs:
   validate:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
       - name: Build
@@ -24,7 +24,7 @@ jobs:
       - name: Publish portable executable
         run: dotnet publish src/FB2WordPress/FB2WordPress.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts
       - name: Upload executable
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: FB2WordPress-v1.0.0-Windows-x64
           path: artifacts/FB2WordPress.exe
