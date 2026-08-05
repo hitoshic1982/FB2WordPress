@@ -1,6 +1,7 @@
 # FB2WordPress
 <p align="center">
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml"><img alt="Cross-platform CI" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/preview-packages.yml"><img alt="Native Preview Packages" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/preview-packages.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/codeql.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/security-audit.yml"><img alt="Security Audit / NuGet" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/security-audit.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/secret-defense.yml"><img alt="Secret Defense / Gitleaks" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/secret-defense.yml/badge.svg"></a>
@@ -61,7 +62,14 @@ See [PRIVACY.md](PRIVACY.md) and [SECURITY.md](SECURITY.md).
 
 ## Cross-platform development status
 
-Only the Windows WinForms application currently provides the complete migration, image-processing, and secure-credential workflow. The shared core and minimal Avalonia entry point build and run tests in Windows, macOS, and Linux CI, but that is not a claim that complete macOS or Linux releases exist or have passed real-device validation. See the [cross-platform development guide](docs/CROSS_PLATFORM.md) for the support matrix, vault policy, and roadmap.
+Only the Windows WinForms application currently provides the complete migration, image-processing, and secure-credential workflow. `v1.1.0-rc.1` additionally provides an **unsigned macOS x64 Preview DMG** and a **Linux x86_64 Preview AppImage**. They are launchable Avalonia migration entry points, not complete migration products and not replacements for the full Windows application.
+
+- The DMG is created on a native Intel macOS GitHub runner and contains a genuine x64 `.app`. Because it has no Apple Developer signature, first launch may require Control-clicking **Open** or allowing it under **Privacy & Security**. It is not yet native for Apple Silicon; Rosetta 2 may be required and has not been validated.
+- The AppImage is created on a native Linux x86_64 runner. Run `chmod +x FB2WordPress-*-Preview.AppImage` after download, then launch it directly; common Linux desktop graphics libraries are still required.
+- CI launches the app from the mounted DMG and the final AppImage, then confirms that each process remains alive. Every artifact set also contains `SHA256SUMS.txt` and an SPDX SBOM; non-PR builds receive GitHub provenance and SBOM attestations when supported.
+- This evidence proves build, packaging, and startup only on clean cloud runners. It is **not real-device validation by the author and not a claim that complete macOS or Linux functionality exists**.
+
+See the [cross-platform development guide](docs/CROSS_PLATFORM.md) for the complete support matrix, vault policy, and roadmap, and [`RELEASE_NOTES_v1.1.0-rc.1.md`](RELEASE_NOTES_v1.1.0-rc.1.md) for the four-language Preview release text.
 
 ## Developer entry point
 

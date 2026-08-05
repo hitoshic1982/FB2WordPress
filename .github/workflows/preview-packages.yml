@@ -1,0 +1,200 @@
+name: Native Preview Packages
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*-rc.*']
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/preview-packages.yml'
+      - 'assets/**'
+      - 'scripts/**'
+      - 'src/FB2WordPress.Core/**'
+      - 'src/FB2WordPress.Desktop/**'
+      - 'tests/CoreAudit/**'
+      - 'Directory.Build.props'
+      - 'README*.md'
+      - 'docs/CROSS_PLATFORM.md'
+      - 'RELEASE_NOTES_v*.md'
+  schedule:
+    - cron: '23 19 * * 4'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  macos-preview:
+    name: macOS x64 unsigned Preview DMG
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Resolve and validate Preview version
+        id: preview_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(dotnet msbuild src/FB2WordPress.Desktop/FB2WordPress.Desktop.csproj -nologo -getProperty:PreviewVersion | tail -n 1 | tr -d '\r')"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$ ]] || { echo "Invalid PreviewVersion: $version" >&2; exit 1; }
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "Tag $GITHUB_REF_NAME does not match PreviewVersion v$version." >&2
+            exit 1
+          fi
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+      - name: Native shared-core audit
+        run: dotnet run --project tests/CoreAudit/FB2WordPress.Core.Audit.csproj -c Release
+      - name: Publish self-contained macOS x64 Preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet publish src/FB2WordPress.Desktop/FB2WordPress.Desktop.csproj \
+            -c Release -r osx-x64 --self-contained true \
+            -p:Version=${{ steps.preview_version.outputs.value }} \
+            -p:ContinuousIntegrationBuild=true \
+            -p:DebugSymbols=false \
+            -p:DebugType=None \
+            -o artifacts/publish
+      - name: Build genuine unsigned DMG
+        shell: bash
+        run: scripts/package-macos-preview.sh "${{ steps.preview_version.outputs.value }}" artifacts/publish artifacts/release
+      - name: Launch smoke test from mounted DMG
+        shell: bash
+        run: scripts/smoke-macos-preview.sh "artifacts/release/FB2WordPress-v${{ steps.preview_version.outputs.value }}-macOS-x64-Preview.dmg"
+      - name: Generate SPDX SBOM with pinned Microsoft tool
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet tool install --tool-path "$RUNNER_TEMP/sbom-tool" Microsoft.Sbom.DotNetTool --version 4.1.5
+          scripts/generate-preview-sbom.sh \
+            "${{ steps.preview_version.outputs.value }}" artifacts/publish artifacts/release \
+            "$RUNNER_TEMP/sbom-tool/sbom-tool" macOS-x64
+      - name: Write SHA256 manifest
+        shell: bash
+        working-directory: artifacts/release
+        run: shasum -a 256 *.dmg *.spdx.json > SHA256SUMS.txt
+      - name: Upload macOS Preview evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: FB2WordPress-v${{ steps.preview_version.outputs.value }}-macOS-x64-Preview
+          path: artifacts/release/*
+          if-no-files-found: error
+          retention-days: 30
+
+  linux-preview:
+    name: Linux x86_64 Preview AppImage
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Install native launch-smoke dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends xvfb xauth libegl1 libx11-6 libice6 libsm6 libfontconfig1 libfreetype6 libxrandr2 libxrender1 libxfixes3 libxcursor1 libxi6 libgl1 libdbus-1-3
+      - name: Resolve and validate Preview version
+        id: preview_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(dotnet msbuild src/FB2WordPress.Desktop/FB2WordPress.Desktop.csproj -nologo -getProperty:PreviewVersion | tail -n 1 | tr -d '\r')"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$ ]] || { echo "Invalid PreviewVersion: $version" >&2; exit 1; }
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "Tag $GITHUB_REF_NAME does not match PreviewVersion v$version." >&2
+            exit 1
+          fi
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+      - name: Native shared-core audit
+        run: dotnet run --project tests/CoreAudit/FB2WordPress.Core.Audit.csproj -c Release
+      - name: Publish self-contained Linux x86_64 Preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet publish src/FB2WordPress.Desktop/FB2WordPress.Desktop.csproj \
+            -c Release -r linux-x64 --self-contained true \
+            -p:Version=${{ steps.preview_version.outputs.value }} \
+            -p:ContinuousIntegrationBuild=true \
+            -p:DebugSymbols=false \
+            -p:DebugType=None \
+            -o artifacts/publish
+      - name: Download checksum-pinned official appimagetool
+        shell: bash
+        run: |
+          set -euo pipefail
+          tool="$RUNNER_TEMP/appimagetool-x86_64.AppImage"
+          curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
+            --output "$tool" \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          echo "a6d71e2b6cd66f8e8d16c37ad164658985e0cf5fcaa950c90a482890cb9d13e0  $tool" | sha256sum --check --strict
+          chmod +x "$tool"
+      - name: Build genuine x86_64 AppImage
+        shell: bash
+        run: scripts/package-linux-preview.sh "${{ steps.preview_version.outputs.value }}" artifacts/publish artifacts/release "$RUNNER_TEMP/appimagetool-x86_64.AppImage"
+      - name: Launch smoke test from final AppImage
+        shell: bash
+        run: xvfb-run --auto-servernum scripts/smoke-linux-preview.sh "artifacts/release/FB2WordPress-v${{ steps.preview_version.outputs.value }}-Linux-x86_64-Preview.AppImage"
+      - name: Generate SPDX SBOM with pinned Microsoft tool
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet tool install --tool-path "$RUNNER_TEMP/sbom-tool" Microsoft.Sbom.DotNetTool --version 4.1.5
+          scripts/generate-preview-sbom.sh \
+            "${{ steps.preview_version.outputs.value }}" artifacts/publish artifacts/release \
+            "$RUNNER_TEMP/sbom-tool/sbom-tool" Linux-x86_64
+      - name: Write SHA256 manifest
+        shell: bash
+        working-directory: artifacts/release
+        run: sha256sum *.AppImage *.spdx.json > SHA256SUMS.txt
+      - name: Upload Linux Preview evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: FB2WordPress-v${{ steps.preview_version.outputs.value }}-Linux-x86_64-Preview
+          path: artifacts/release/*
+          if-no-files-found: error
+          retention-days: 30
+
+  attest-preview:
+    name: Trusted Preview provenance and SBOM attestations
+    if: github.event_name != 'pull_request'
+    needs: [macos-preview, linux-preview]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download native Preview evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: FB2WordPress-v*-Preview
+          path: trusted-artifacts
+      - name: Attest DMG provenance
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: trusted-artifacts/*macOS*/*.dmg
+      - name: Attest DMG SBOM
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: trusted-artifacts/*macOS*/*.dmg
+          sbom-path: trusted-artifacts/*macOS*/*.spdx.json
+      - name: Attest AppImage provenance
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: trusted-artifacts/*Linux*/*.AppImage
+      - name: Attest AppImage SBOM
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: trusted-artifacts/*Linux*/*.AppImage
+          sbom-path: trusted-artifacts/*Linux*/*.spdx.json

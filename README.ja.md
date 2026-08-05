@@ -1,6 +1,7 @@
 # FB2WordPress
 <p align="center">
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml"><img alt="Cross-platform CI" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/preview-packages.yml"><img alt="Native Preview Packages" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/preview-packages.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/codeql.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/security-audit.yml"><img alt="Security Audit / NuGet" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/security-audit.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/secret-defense.yml"><img alt="Secret Defense / Gitleaks" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/secret-defense.yml/badge.svg"></a>
@@ -61,7 +62,14 @@ Facebook の公式ダウンロードデータに含まれる投稿・画像・�
 
 ## クロスプラットフォーム開発状況
 
-現在、完全な移行、画像処理、安全な資格情報保存を利用できるのは Windows WinForms 版だけです。共有コアと Avalonia の最小入口は Windows、macOS、Linux の CI でビルドとテストが可能ですが、macOS／Linux 完全版の完成や実機検証を意味しません。対応表、安全な保管庫の原則、今後の計画は [クロスプラットフォーム開発ガイド](docs/CROSS_PLATFORM.md) をご覧ください。
+現在、完全な移行、画像処理、安全な資格情報保存を利用できるのは Windows WinForms 版だけです。`v1.1.0-rc.1` では、**未署名の macOS x64 Preview DMG** と **Linux x86_64 Preview AppImage** も提供します。どちらも起動可能な Avalonia 移植入口であり、完全な移行製品でも Windows 完全版の代替でもありません。
+
+- DMG はネイティブの Intel macOS GitHub runner で作成し、真正な x64 `.app` を収録します。Apple Developer 署名がないため、初回は Control キーを押しながら「開く」を選ぶか、「プライバシーとセキュリティ」で許可する必要があります。Apple Silicon ネイティブ版ではなく、Rosetta 2 が必要になる可能性があり、現時点では未検証です。
+- AppImage はネイティブの Linux x86_64 runner で作成します。ダウンロード後に `chmod +x FB2WordPress-*-Preview.AppImage` を実行してから起動してください。一般的な Linux デスクトップ用グラフィックスライブラリは必要です。
+- CI はマウントした DMG と最終 AppImage から画面を起動し、プロセスが存続することを確認します。各成果物には `SHA256SUMS.txt` と SPDX SBOM を添付し、PR 以外のビルドでは GitHub が対応する場合に来歴・SBOM 証明も生成します。
+- これはクリーンなクラウド runner 上でのビルド、梱包、起動の証拠です。**作者による macOS／Linux 実機検証でも、全機能対応の表明でもありません**。
+
+完全な対応表、安全な保管庫の原則、今後の計画は [クロスプラットフォーム開発ガイド](docs/CROSS_PLATFORM.md)、今回の4言語 Preview 公開文は [`RELEASE_NOTES_v1.1.0-rc.1.md`](RELEASE_NOTES_v1.1.0-rc.1.md) をご覧ください。
 
 ## 開発者向け
 

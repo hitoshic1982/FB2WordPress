@@ -1,6 +1,7 @@
 # FB2WordPress
 <p align="center">
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml"><img alt="Cross-platform CI" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/preview-packages.yml"><img alt="Native Preview Packages" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/preview-packages.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/codeql.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/security-audit.yml"><img alt="Security Audit / NuGet" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/security-audit.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/secret-defense.yml"><img alt="Secret Defense / Gitleaks" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/secret-defense.yml/badge.svg"></a>
@@ -62,7 +63,14 @@
 
 ## 跨平台開發狀態
 
-目前只有 Windows WinForms 版具備完整搬家、圖片處理與安全憑證流程。共用核心與 Avalonia 最小入口已能在 Windows、macOS、Linux 的 CI 建置與測試，但這不等於 macOS／Linux 完整版已完成或通過實機驗證。支援矩陣、安全儲存原則與後續路線請見 [跨平台開發說明](docs/CROSS_PLATFORM.md)。
+目前只有 Windows WinForms 版具備完整搬家、圖片處理與安全憑證流程。`v1.1.0-rc.1` 會另外提供 **macOS x64 未簽章 Preview DMG** 與 **Linux x86_64 Preview AppImage**；兩者是可啟動的 Avalonia 移植入口，不含完整搬家流程，不得取代 Windows 完整版。
+
+- DMG 由原生 macOS Intel GitHub runner 製作，內含真正的 x64 `.app`；因未購買 Apple 開發者簽章，首次開啟可能需要按住 Control 點選「打開」，或到「隱私權與安全性」允許開啟。Apple Silicon 目前不是原生版本，可能需要 Rosetta 2，且尚未驗證。
+- AppImage 由原生 Linux x86_64 runner 製作。下載後執行 `chmod +x FB2WordPress-*-Preview.AppImage`，再直接執行；仍需一般 Linux 桌面圖形函式庫。
+- CI 會從掛載後的 DMG 與最終 AppImage 啟動視窗並確認程序存活，另附 `SHA256SUMS.txt`、SPDX SBOM；非 PR 建置在 GitHub 支援時也建立來源證明。
+- 這些結果只證明乾淨的雲端 runner 能建置、封裝與啟動，**不代表已在作者持有的 macOS／Linux 實機完成驗證，也不代表所有功能可用**。
+
+完整支援矩陣、安全儲存原則與後續路線請見 [跨平台開發說明](docs/CROSS_PLATFORM.md)，本次 Preview 發布文字見 [`RELEASE_NOTES_v1.1.0-rc.1.md`](RELEASE_NOTES_v1.1.0-rc.1.md)。
 
 ## 開發者入口
 

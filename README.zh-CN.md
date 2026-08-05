@@ -1,6 +1,7 @@
 # FB2WordPress
 <p align="center">
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml"><img alt="Cross-platform CI" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/preview-packages.yml"><img alt="Native Preview Packages" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/preview-packages.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/codeql.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/security-audit.yml"><img alt="Security Audit / NuGet" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/security-audit.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/secret-defense.yml"><img alt="Secret Defense / Gitleaks" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/secret-defense.yml/badge.svg"></a>
@@ -61,7 +62,14 @@
 
 ## 跨平台开发状态
 
-目前只有 Windows WinForms 版具备完整迁移、图片处理和安全凭据流程。共享核心与 Avalonia 最小入口已经能在 Windows、macOS、Linux 的 CI 中构建和测试，但这不代表 macOS／Linux 完整版已经完成或通过实机验证。支持矩阵、安全存储原则与后续路线请参阅 [跨平台开发说明](docs/CROSS_PLATFORM.md)。
+目前只有 Windows WinForms 版具备完整迁移、图片处理和安全凭据流程。`v1.1.0-rc.1` 将另外提供 **macOS x64 未签名 Preview DMG** 与 **Linux x86_64 Preview AppImage**；两者只是可启动的 Avalonia 移植入口，不含完整迁移流程，不能取代 Windows 完整版。
+
+- DMG 由原生 macOS Intel GitHub runner 制作，内含真正的 x64 `.app`。因为没有 Apple 开发者签名，首次打开时可能需要按住 Control 点击“打开”，或在“隐私与安全性”中允许打开。Apple Silicon 目前不是原生版本，可能需要 Rosetta 2，且尚未验证。
+- AppImage 由原生 Linux x86_64 runner 制作。下载后运行 `chmod +x FB2WordPress-*-Preview.AppImage`，然后直接启动；仍需要常见 Linux 桌面图形库。
+- CI 会从挂载后的 DMG 与最终 AppImage 启动窗口并确认进程存活，同时附带 `SHA256SUMS.txt` 和 SPDX SBOM；非 PR 构建在 GitHub 支持时还会生成来源证明。
+- 这些结果只证明干净的云端 runner 能够构建、打包并启动，**不代表作者已经在 macOS／Linux 实机完成验证，也不代表全部功能可用**。
+
+完整支持矩阵、安全存储原则与后续路线请参阅 [跨平台开发说明](docs/CROSS_PLATFORM.md)，本次 Preview 发布文字见 [`RELEASE_NOTES_v1.1.0-rc.1.md`](RELEASE_NOTES_v1.1.0-rc.1.md)。
 
 ## 开发者入口
 
