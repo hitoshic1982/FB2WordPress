@@ -1,6 +1,7 @@
 # FB2WordPress
 <p align="center">
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml"><img alt="Cross-platform CI" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/preview-packages.yml"><img alt="Native Preview Packages" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/preview-packages.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/codeql.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/security-audit.yml"><img alt="Security Audit / NuGet" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/security-audit.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/secret-defense.yml"><img alt="Secret Defense / Gitleaks" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/secret-defense.yml/badge.svg"></a>
@@ -61,7 +62,14 @@ Facebook の公式ダウンロードデータに含まれる投稿・画像・�
 
 ## クロスプラットフォーム開発状況
 
-現在、完全な移行、画像処理、安全な資格情報保存を利用できるのは Windows WinForms 版だけです。共有コアと Avalonia の最小入口は Windows、macOS、Linux の CI でビルドとテストが可能ですが、macOS／Linux 完全版の完成や実機検証を意味しません。対応表、安全な保管庫の原則、今後の計画は [クロスプラットフォーム開発ガイド](docs/CROSS_PLATFORM.md) をご覧ください。
+現在、完全な移行、画像処理、安全な資格情報保存を利用できるのは Windows WinForms 版だけです。`v1.1.0-rc.1` では、**Windows x64 完全版 EXE**、**macOS x64 と Apple Silicon arm64 の個別の未署名 Preview DMG**、および **Linux x86_64 Preview AppImage** を提供します。macOS／Linux 版は起動可能な Avalonia 移植入口であり、完全な移行製品でも Windows 完全版の代替でもありません。
+
+- 2種類の DMG は Intel x64 と Apple Silicon arm64 のネイティブ macOS GitHub runner で個別に作成・起動検証します。Apple Silicon 利用者は Rosetta 2 に依存せず、ネイティブ arm64 版を利用できます。Apple Developer 署名がないため、初回は Control キーを押しながら「開く」を選ぶか、「プライバシーとセキュリティ」で許可する必要があります。
+- AppImage はネイティブの Linux x86_64 runner で作成します。ダウンロード後に `chmod +x FB2WordPress-*-Preview.AppImage` を実行してから起動してください。一般的な Linux デスクトップ用グラフィックスライブラリは必要です。
+- CI は最終 Windows EXE、マウントした2種類の DMG、最終 AppImage を起動し、各プロセスの存続を確認します。`v1.1.0-rc.N`（`N > 0`）に厳密一致し、ソースのバージョンとも一致し、タグの commit が `origin/main` に含まれる場合に限り、単一の `SHA256SUMS.txt`、各プラットフォームの SPDX SBOM、来歴証明をまとめ、この4言語説明から GitHub prerelease を作成します。PR と通常の `main` push は読み取り専用検証だけを行い、公開しません。
+- これはクリーンなクラウド runner 上でのビルド、梱包、起動の証拠です。**作者による macOS／Linux 実機検証でも、全機能対応の表明でもありません**。
+
+完全な対応表、安全な保管庫の原則、今後の計画は [クロスプラットフォーム開発ガイド](docs/CROSS_PLATFORM.md)、今回の4言語 Preview 公開文は [`RELEASE_NOTES_v1.1.0-rc.1.md`](RELEASE_NOTES_v1.1.0-rc.1.md) をご覧ください。
 
 ## 開発者向け
 

@@ -1,6 +1,7 @@
 # FB2WordPress
 <p align="center">
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml"><img alt="Cross-platform CI" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/preview-packages.yml"><img alt="Native Preview Packages" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/preview-packages.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/codeql.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/security-audit.yml"><img alt="Security Audit / NuGet" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/security-audit.yml/badge.svg"></a>
   <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/secret-defense.yml"><img alt="Secret Defense / Gitleaks" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/secret-defense.yml/badge.svg"></a>
@@ -61,7 +62,14 @@
 
 ## 跨平台开发状态
 
-目前只有 Windows WinForms 版具备完整迁移、图片处理和安全凭据流程。共享核心与 Avalonia 最小入口已经能在 Windows、macOS、Linux 的 CI 中构建和测试，但这不代表 macOS／Linux 完整版已经完成或通过实机验证。支持矩阵、安全存储原则与后续路线请参阅 [跨平台开发说明](docs/CROSS_PLATFORM.md)。
+目前只有 Windows WinForms 版具备完整迁移、图片处理和安全凭据流程。`v1.1.0-rc.1` 将提供 **Windows x64 完整 EXE**、**macOS x64 与 Apple Silicon arm64 两种未签名 Preview DMG**，以及 **Linux x86_64 Preview AppImage**；macOS／Linux 仍只是可启动的 Avalonia 移植入口，不含完整迁移流程，不能取代 Windows 完整版。
+
+- 两种 DMG 分别由 Intel x64 与 Apple Silicon arm64 原生 macOS GitHub runner 制作并启动验证；Apple Silicon 用户可以下载原生 arm64 版本，不需要依赖 Rosetta 2。因为没有 Apple 开发者签名，首次打开时可能需要按住 Control 点击“打开”，或在“隐私与安全性”中允许打开。
+- AppImage 由原生 Linux x86_64 runner 制作。下载后运行 `chmod +x FB2WordPress-*-Preview.AppImage`，然后直接启动；仍需要常见 Linux 桌面图形库。
+- CI 会从最终 Windows EXE、两种挂载后的 DMG 与最终 AppImage 启动程序并确认进程存活。只有标签严格匹配 `v1.1.0-rc.N`（`N > 0`）、版本一致且标签提交属于 `origin/main` 时，才会汇总单一 `SHA256SUMS.txt`、各平台 SPDX SBOM 与来源证明，并使用本文件的四语说明创建 GitHub prerelease；PR 与普通 `main` 推送只进行只读验证，不会发布。
+- 这些结果只证明干净的云端 runner 能够构建、打包并启动，**不代表作者已经在 macOS／Linux 实机完成验证，也不代表全部功能可用**。
+
+完整支持矩阵、安全存储原则与后续路线请参阅 [跨平台开发说明](docs/CROSS_PLATFORM.md)，本次 Preview 发布文字见 [`RELEASE_NOTES_v1.1.0-rc.1.md`](RELEASE_NOTES_v1.1.0-rc.1.md)。
 
 ## 开发者入口
 

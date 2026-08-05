@@ -4,6 +4,8 @@
 
 ### 繁體中文
 
+- 新增 Windows x64 完整 EXE、macOS x64 與 Apple Silicon arm64 兩種未簽章 Preview DMG，以及 Linux x86_64 Preview AppImage；四份最終成品均在相符的原生 GitHub runner 執行啟動存活測試。
+- 只有精確 `v1.1.0-rc.N`（`N > 0`）、版本相符且標籤提交屬於 `origin/main` 時，才會彙整 SHA256、各平台 SPDX SBOM 與證明並建立四語 prerelease；任一失敗或一般 `main` 推送都不發布。macOS／Linux 仍明確標示為移植入口，尚非完整搬家版或作者實機驗證。
 - 建立 `net10.0` 共用核心與 Avalonia 12 最小桌面入口，並新增 Windows、macOS、Linux CI 矩陣。
 - Windows WinForms 完整版、DPAPI、圖片壓縮、搬家進度與單一 EXE 流程維持不變。
 - 跨平台安全設定改採憑證世代切換：三組機密完整寫入後才更新公開設定，失敗可回到上一個一致狀態；清空憑證後舊值不會復活。
@@ -16,6 +18,8 @@
 
 ### 简体中文
 
+- 新增 Windows x64 完整 EXE、macOS x64 与 Apple Silicon arm64 两种未签名 Preview DMG，以及 Linux x86_64 Preview AppImage；四份最终成品都在架构匹配的原生 GitHub runner 中执行启动存活测试。
+- 只有标签严格匹配 `v1.1.0-rc.N`（`N > 0`）、版本一致且标签提交属于 `origin/main` 时，才会汇总 SHA256、各平台 SPDX SBOM 与证明并创建四语 prerelease；任一失败或普通 `main` 推送都不会发布。macOS／Linux 仍明确标记为移植入口，不是完整迁移版或作者实机验证。
 - 建立 `net10.0` 共享核心与 Avalonia 12 最小桌面入口，并新增 Windows、macOS、Linux CI 矩阵。
 - Windows WinForms 完整版、DPAPI、图片压缩、迁移进度和单一 EXE 流程保持不变。
 - 跨平台安全设置改用凭据世代切换：三组机密完整写入后才更新公开设置，失败时可回到上一个一致状态；清空凭据后旧值不会重新出现。
@@ -28,6 +32,8 @@
 
 ### English
 
+- Added the complete Windows x64 EXE, separate unsigned macOS x64 and Apple Silicon arm64 Preview DMGs, and a Linux x86_64 Preview AppImage. All four final packages are launch-smoke-tested on matching native GitHub runners.
+- Only an exact `v1.1.0-rc.N` tag (`N > 0`) with a matching source version and a commit contained in `origin/main` can aggregate SHA256, per-platform SPDX SBOMs, and attestations into a four-language prerelease. Any failure or ordinary `main` push never publishes. macOS/Linux remain explicitly incomplete migration entry points without author-owned real-device validation.
 - Added a shared `net10.0` core, a minimal Avalonia 12 desktop entry point, and a Windows/macOS/Linux CI matrix.
 - Preserved the complete Windows WinForms application, DPAPI, image compression, migration progress, and single-EXE flow.
 - Added generation-based secure settings: all three secrets are staged before the public settings pointer changes, failed writes retain the previous consistent state, and explicitly cleared credentials cannot reappear.
@@ -40,6 +46,8 @@
 
 ### 日本語
 
+- Windows x64 完全版 EXE、macOS x64 と Apple Silicon arm64 の個別の未署名 Preview DMG、Linux x86_64 Preview AppImage を追加し、4つの最終成果物を対応するネイティブ GitHub runner 上で起動・存続テストします。
+- `v1.1.0-rc.N`（`N > 0`）に厳密一致し、ソースのバージョンとも一致し、タグの commit が `origin/main` に含まれる場合に限り、SHA256、各プラットフォームの SPDX SBOM、証明を4言語 prerelease にまとめます。いずれかの失敗時や通常の `main` push では公開しません。macOS／Linux は未完成の移植入口であり、作者による実機検証済み完全版ではありません。
 - `net10.0` 共有コア、Avalonia 12 の最小デスクトップ入口、Windows／macOS／Linux の CI マトリクスを追加しました。
 - Windows WinForms 完全版、DPAPI、画像圧縮、移行進捗、単一 EXE の手順を維持しました。
 - クロスプラットフォーム設定に資格情報の世代切り替えを導入しました。3つの機密情報をすべて保存してから公開設定の参照先を更新し、失敗時は以前の一貫した状態を維持します。明示的に削除した資格情報が後から復活することもありません。
