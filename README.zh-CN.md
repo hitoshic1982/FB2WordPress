@@ -1,4 +1,10 @@
 # FB2WordPress
+<p align="center">
+  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml"><img alt="Windows CI" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/hitoshic1982/FB2WordPress/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/hitoshic1982/FB2WordPress?label=release"></a>
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+</p>
+
 
 [繁體中文](README.md) · [简体中文](README.zh-CN.md) · [English](README.en.md) · [日本語](README.ja.md)
 
@@ -61,5 +67,14 @@ dotnet run --project tests/AuditHarness/WordPressAuditHarness.csproj -c Release
 ## 开源与责任
 
 本项目采用 [MIT License](LICENSE)，与 Meta、Facebook、Automattic、WordPress Foundation、Google 或 YouTube 没有隶属或背书关系。请只迁移你有权处理的内容，并遵守平台条款、版权和个人信息法规。
+
+## 自由赞助
+
+FB2WordPress 依 MIT 许可证完整开放，迁移、图片优化与文章整理功能不会因是否赞助而有差别。如果它帮助你将内容真正带回自己的网站，欢迎自愿支持炎剑文化工作室继续维护与改进：
+
+- [Buy Me a Coffee](https://buymeacoffee.com/flameblade_studio)
+- [PayPal.Me](https://www.paypal.com/paypalme/flamebladestudio)
+
+赞助不是使用条件；分享实际经验、报告兼容性问题或参与 PR，也能帮助更多创作者。
 
 作者：CHOU MING HUA／炎剑文化工作室 · [官方网站](https://www.flamebladestudio.com.tw/)

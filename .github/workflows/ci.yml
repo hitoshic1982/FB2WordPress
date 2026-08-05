@@ -26,5 +26,5 @@ jobs:
       - name: Upload executable
         uses: actions/upload-artifact@v7
         with:
-          name: FB2WordPress-v1.0.0-Windows-x64
+          name: FB2WordPress-v1.1.0-Windows-x64
           path: artifacts/FB2WordPress.exe

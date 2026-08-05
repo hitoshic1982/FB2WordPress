@@ -51,7 +51,7 @@ internal static partial class FacebookParser
                     }
                 }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException) { log($"略過 {Path.GetFileName(file)}：{ex.Message}"); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { log(L.P("略過 {0}：{1}", "跳过 {0}：{1}", "Skipped {0}: {1}", "{0} をスキップ：{1}", Path.GetFileName(file), ex.Message)); }
         }
 
         return output.GroupBy(x => x.Key).Select(x => x.First()).OrderBy(x => x.Published).ToList();
@@ -74,7 +74,7 @@ internal static partial class FacebookParser
         var date = DateTimeOffset.FromUnixTimeSeconds(unix);
         var labels = ExtractLabels(text);
         var firstLine = text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim();
-        var title = string.IsNullOrEmpty(firstLine) ? $"Facebook 貼文 {date:yyyy-MM-dd HH:mm}" :
+        var title = string.IsNullOrEmpty(firstLine) ? L.P("Facebook 貼文 {0}", "Facebook 帖子 {0}", "Facebook post {0}", "Facebook 投稿 {0}", date.ToString("yyyy-MM-dd HH:mm")) :
             firstLine.Length <= 90 ? firstLine : firstLine[..90] + "…";
         var key = $"{unix}:{Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..16]}";
         output.Add(new(key, title, text, date, labels, media.DistinctBy(m => m.RelativePath).ToList()));

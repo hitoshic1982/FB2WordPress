@@ -1,4 +1,10 @@
 # FB2WordPress
+<p align="center">
+  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml"><img alt="Windows CI" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/hitoshic1982/FB2WordPress/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/hitoshic1982/FB2WordPress?label=release"></a>
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+</p>
+
 
 [繁體中文](README.md) · [简体中文](README.zh-CN.md) · [English](README.en.md) · [日本語](README.ja.md)
 
@@ -65,5 +71,14 @@ dotnet publish src/FB2WordPress/FB2WordPress.csproj -c Release -r win-x64 --self
 本專案採 [MIT License](LICENSE)。歡迎檢查原始碼、回報問題及提交 PR。
 
 這是獨立開源工具，與 Meta、Facebook、Automattic、WordPress Foundation、Google 或 YouTube 無隸屬或背書關係。請只移轉你有權處理的內容，並遵守各平台條款、著作權與個資法規。
+
+## 自由贊助
+
+FB2WordPress 依 MIT 授權完整開放，搬家、圖片最佳化與文章整理功能不會因是否贊助而有差別。如果它協助你把內容真正帶回自己的網站，歡迎自由支持炎劍文化工作室持續維護與改善：
+
+- [Buy Me a Coffee](https://buymeacoffee.com/flameblade_studio)
+- [PayPal.Me](https://www.paypal.com/paypalme/flamebladestudio)
+
+贊助不是使用條件；分享實際使用經驗、回報相容性問題或參與 PR，也能幫助更多創作者。
 
 作者：CHOU MING HUA／炎劍文化工作室 · [官方網站](https://www.flamebladestudio.com.tw/)

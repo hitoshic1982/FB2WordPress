@@ -1,4 +1,10 @@
 # FB2WordPress
+<p align="center">
+  <a href="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml"><img alt="Windows CI" src="https://github.com/hitoshic1982/FB2WordPress/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/hitoshic1982/FB2WordPress/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/hitoshic1982/FB2WordPress?label=release"></a>
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+</p>
+
 
 [繁體中文](README.md) · [简体中文](README.zh-CN.md) · [English](README.en.md) · [日本語](README.ja.md)
 
@@ -61,5 +67,14 @@ dotnet run --project tests/AuditHarness/WordPressAuditHarness.csproj -c Release
 ## Open source and responsibility
 
 Licensed under the [MIT License](LICENSE). This independent project is not affiliated with or endorsed by Meta, Facebook, Automattic, the WordPress Foundation, Google, or YouTube. Migrate only content you are authorized to handle, and comply with platform terms, copyright, and privacy laws.
+
+## Voluntary support
+
+FB2WordPress is fully available under the MIT License. Migration, image optimization, and article-cleanup features are identical for everyone, whether or not they donate. If the tool helped bring your work back under your own domain, you may voluntarily support Flameblade Studio's ongoing maintenance:
+
+- [Buy Me a Coffee](https://buymeacoffee.com/flameblade_studio)
+- [PayPal.Me](https://www.paypal.com/paypalme/flamebladestudio)
+
+Donations are never a condition of use. Field reports, compatibility feedback, and pull requests also help the wider creator community.
 
 Author: CHOU MING HUA / Flameblade Studio · [Official website](https://www.flamebladestudio.com.tw/)
