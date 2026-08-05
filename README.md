@@ -63,11 +63,11 @@
 
 ## 跨平台開發狀態
 
-目前只有 Windows WinForms 版具備完整搬家、圖片處理與安全憑證流程。`v1.1.0-rc.1` 會另外提供 **macOS x64 未簽章 Preview DMG** 與 **Linux x86_64 Preview AppImage**；兩者是可啟動的 Avalonia 移植入口，不含完整搬家流程，不得取代 Windows 完整版。
+目前只有 Windows WinForms 版具備完整搬家、圖片處理與安全憑證流程。`v1.1.0-rc.1` 會提供 **Windows x64 完整 EXE**、**macOS x64 與 Apple Silicon arm64 兩種未簽章 Preview DMG**，以及 **Linux x86_64 Preview AppImage**；macOS／Linux 仍只是可啟動的 Avalonia 移植入口，不含完整搬家流程，不得取代 Windows 完整版。
 
-- DMG 由原生 macOS Intel GitHub runner 製作，內含真正的 x64 `.app`；因未購買 Apple 開發者簽章，首次開啟可能需要按住 Control 點選「打開」，或到「隱私權與安全性」允許開啟。Apple Silicon 目前不是原生版本，可能需要 Rosetta 2，且尚未驗證。
+- 兩種 DMG 分別由 Intel x64 與 Apple Silicon arm64 原生 macOS GitHub runner 製作並啟動驗證；Apple Silicon 使用者可下載原生 arm64 版，不需依賴 Rosetta 2。因未購買 Apple 開發者簽章，首次開啟可能需要按住 Control 點選「打開」，或到「隱私權與安全性」允許開啟。
 - AppImage 由原生 Linux x86_64 runner 製作。下載後執行 `chmod +x FB2WordPress-*-Preview.AppImage`，再直接執行；仍需一般 Linux 桌面圖形函式庫。
-- CI 會從掛載後的 DMG 與最終 AppImage 啟動視窗並確認程序存活，另附 `SHA256SUMS.txt`、SPDX SBOM；非 PR 建置在 GitHub 支援時也建立來源證明。
+- CI 會從最終 Windows EXE、兩種掛載後的 DMG 與最終 AppImage 啟動程式並確認程序存活。只有精確符合 `v1.1.0-rc.N`（`N > 0`）、版本相符且標籤提交屬於 `origin/main` 時，才會彙整單一 `SHA256SUMS.txt`、各平台 SPDX SBOM 與來源證明，使用本檔四語說明建立 GitHub prerelease；PR 與一般 `main` 推送都只有唯讀驗證，不會發布。
 - 這些結果只證明乾淨的雲端 runner 能建置、封裝與啟動，**不代表已在作者持有的 macOS／Linux 實機完成驗證，也不代表所有功能可用**。
 
 完整支援矩陣、安全儲存原則與後續路線請見 [跨平台開發說明](docs/CROSS_PLATFORM.md)，本次 Preview 發布文字見 [`RELEASE_NOTES_v1.1.0-rc.1.md`](RELEASE_NOTES_v1.1.0-rc.1.md)。

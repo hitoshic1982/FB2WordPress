@@ -14,8 +14,8 @@ Cloud builds prove that source code compiles in a clean environment; they do not
 - 設定切換使用持久交易日誌；程式中斷、公開檔寫入失敗或舊世代刪除失敗時，下次啟動會依公開指標完成清理或安全回復。刪除舊憑證前，必須先驗證公開主檔與備份都指向同一個新世代；清除日誌時則先刪備份再刪主檔，避免中斷後舊日誌復活。公開 JSON 無法讀取時只接受有效備份；主檔與備份都無效就停止保存，不覆寫現場。
 - 同一路徑的載入、保存、回復與舊憑證清理，全程共用具所有權的跨程序檔案鎖。鎖由作業系統獨占檔案控制代碼持有，程序崩潰會自動釋放；超時、權限不足、符號連結或 reparse 路徑一律安全拒絕，不會在無鎖狀態繼續交易。
 - 建立 Avalonia 12 相對佈局的最小桌面入口，以及 Windows、macOS、Linux 三平台的共用核心建置與測試矩陣。
-- 建立原生封裝管線：Intel macOS runner 使用系統 `hdiutil` 產生未簽章 `.dmg`（內含 `.app`），Linux x86_64 runner 使用官方且經 SHA256 鎖定的 `appimagetool` 產生真正 `.AppImage`。兩者都從最終封裝成品啟動介面並執行存活測試。
-- 每組 Preview 成品包含 SHA256 與 SPDX SBOM；非 PR 建置在 GitHub 支援時建立來源及 SBOM 證明。所有第三方 Actions 都固定到完整 commit SHA，Microsoft SBOM Tool 固定為 `4.1.5`。
+- 建立原生封裝管線：Windows runner 產生完整自含式 x64 EXE；Intel x64 與 Apple Silicon arm64 macOS runner 各自使用系統 `hdiutil` 產生架構相符的未簽章 `.dmg`（內含 `.app`）；Linux x86_64 runner 使用官方且經 SHA256 鎖定的 `appimagetool` 產生真正 `.AppImage`。四份最終封裝成品都會在相符 runner 啟動並執行存活測試。
+- PR 固定聚合檢查必須等 Windows、macOS x64、macOS arm64、Linux 四份成品全數成功；PR、一般 `main` 推送、排程與手動執行都維持唯讀且不發布。只有精確 `v1.1.0-rc.N`（`N > 0`）、版本相符且標籤提交屬於 `origin/main` 時，可信工作才獲得發布與證明權限，彙整單一 SHA256、各平台 SPDX SBOM 與來源／SBOM 證明，最後以四語說明建立 prerelease。任一步驟失敗就不發布。所有第三方 Actions 都固定到完整 commit SHA，Microsoft SBOM Tool 固定為 `4.1.5`。
 
 ### 支援與驗證矩陣
 
@@ -24,7 +24,7 @@ Cloud builds prove that source code compiles in a clean environment; they do not
 | 共用核心建置／測試 | CI | CI | CI |
 | 現有完整操作介面 | WinForms 已保留並在 Windows 驗證 | 尚未完成 | 尚未完成 |
 | Avalonia 最小入口 | 可建置；僅為移植基礎 | 可建置；僅為移植基礎 | 可建置；僅為移植基礎 |
-| 原生 Preview 封裝 | 不適用；Windows 仍使用既有完整 EXE | 未簽章 x64 DMG；原生 runner 啟動測試 | x86_64 AppImage；原生 runner 啟動測試 |
+| 原生 Preview 封裝 | 完整自含式 x64 EXE；runner 啟動測試 | 未簽章 x64 與原生 Apple Silicon arm64 DMG；各自在相符 runner 啟動測試 | x86_64 AppImage；原生 runner 啟動測試 |
 | Facebook ZIP 完整搬家流程 | 已有 | 尚待移植 | 尚待移植 |
 | 憑證保護 | Windows DPAPI 已有 | Keychain 尚待實作 | Secret Service 尚待實作 |
 | 圖片壓縮 | 既有 Windows 引擎已驗證 | 尚待跨平台引擎 | 尚待跨平台引擎 |
@@ -55,8 +55,8 @@ Cloud builds prove that source code compiles in a clean environment; they do not
 - 设置切换使用持久事务日志；程序中断、公开文件写入失败或旧世代删除失败时，下次启动会根据公开指针完成清理或安全恢复。删除旧凭据前，必须先验证公开主文件与备份都指向同一个新世代；清除日志时先删除备份再删除主文件，避免中断后旧日志复活。公开 JSON 无法读取时只接受有效备份；主文件与备份都无效时停止保存，不覆盖现场。
 - 同一路径的加载、保存、恢复与旧凭据清理，全程共用具所有权的跨进程文件锁。锁由操作系统独占文件句柄持有，进程崩溃会自动释放；超时、权限不足、符号链接或 reparse 路径一律安全拒绝，不会在未持锁时继续事务。
 - 建立采用相对布局的 Avalonia 12 最小桌面入口，以及 Windows、macOS、Linux 三平台共享核心的构建与测试矩阵。
-- 建立原生打包流水线：Intel macOS runner 使用系统 `hdiutil` 生成未签名 `.dmg`（内含 `.app`），Linux x86_64 runner 使用官方且经过 SHA256 锁定的 `appimagetool` 生成真正的 `.AppImage`。两者都从最终打包成品启动界面并执行存活测试。
-- 每组 Preview 成品包含 SHA256 和 SPDX SBOM；非 PR 构建在 GitHub 支持时生成来源与 SBOM 证明。所有第三方 Actions 都固定到完整 commit SHA，Microsoft SBOM Tool 固定为 `4.1.5`。
+- 建立原生打包流水线：Windows runner 生成完整自包含 x64 EXE；Intel x64 与 Apple Silicon arm64 macOS runner 分别使用系统 `hdiutil` 生成架构匹配的未签名 `.dmg`（内含 `.app`）；Linux x86_64 runner 使用官方且经过 SHA256 锁定的 `appimagetool` 生成真正的 `.AppImage`。四份最终成品都会在架构匹配的 runner 上启动并执行存活测试。
+- PR 的固定聚合检查必须等待 Windows、macOS x64、macOS arm64、Linux 四份成品全部成功；PR、普通 `main` 推送、定时与手动执行都保持只读且不会发布。只有标签严格匹配 `v1.1.0-rc.N`（`N > 0`）、版本一致且标签提交属于 `origin/main` 时，可信任务才获得发布与证明权限，汇总单一 SHA256、各平台 SPDX SBOM 与来源／SBOM 证明，最后使用四语说明创建 prerelease。任一步骤失败都不会发布。所有第三方 Actions 都固定到完整 commit SHA，Microsoft SBOM Tool 固定为 `4.1.5`。
 
 ### 支持与验证矩阵
 
@@ -65,7 +65,7 @@ Cloud builds prove that source code compiles in a clean environment; they do not
 | 共享核心构建／测试 | CI | CI | CI |
 | 现有完整操作界面 | 保留 WinForms，并已在 Windows 验证 | 尚未完成 | 尚未完成 |
 | Avalonia 最小入口 | 可构建；仅作为迁移基础 | 可构建；仅作为迁移基础 | 可构建；仅作为迁移基础 |
-| 原生 Preview 打包 | 不适用；Windows 继续使用现有完整 EXE | 未签名 x64 DMG；原生 runner 启动测试 | x86_64 AppImage；原生 runner 启动测试 |
+| 原生 Preview 打包 | 完整自包含 x64 EXE；runner 启动测试 | 未签名 x64 与原生 Apple Silicon arm64 DMG；分别在匹配 runner 启动测试 | x86_64 AppImage；原生 runner 启动测试 |
 | Facebook ZIP 完整迁移流程 | 已有 | 尚待迁移 | 尚待迁移 |
 | 凭据保护 | 已有 Windows DPAPI | Keychain 尚待实现 | Secret Service 尚待实现 |
 | 图片压缩 | 现有 Windows 引擎已验证 | 尚待跨平台引擎 | 尚待跨平台引擎 |
@@ -96,8 +96,8 @@ Cloud builds prove that source code compiles in a clean environment; they do not
 - A durable transaction journal covers settings transitions. After interruption, public-file failure, or retired-generation deletion failure, the next start finishes cleanup or rolls back according to the public pointer. Before retired credentials are deleted, both the public primary and backup must be verified against the same new active generation. Journal removal deletes its backup before its primary, preventing an interrupted deletion from reviving an older transaction. An unreadable public JSON file recovers only from a valid backup; if both copies are invalid, saving stops without overwriting the evidence.
 - Every load, save, recovery, and retired-generation cleanup for the same path now shares an owned cross-process file lock. The operating system owns the exclusive file handle and releases it after a crash; timeout, access failure, symbolic-link, or reparse-path detection fails closed instead of continuing a transaction without the lock.
 - Added a minimal Avalonia 12 desktop entry point with relative layout and a Windows/macOS/Linux build-and-test matrix for the shared core.
-- Added native packaging: an Intel macOS runner uses the system `hdiutil` to create an unsigned `.dmg` containing a genuine `.app`; a Linux x86_64 runner uses the official SHA256-pinned `appimagetool` to create a real `.AppImage`. Both workflows launch the UI from the final package and perform a process-liveness smoke test.
-- Every Preview artifact set includes SHA256 and an SPDX SBOM. Non-PR builds receive provenance and SBOM attestations when GitHub supports them. All third-party Actions use full commit SHAs, and Microsoft SBOM Tool is fixed at `4.1.5`.
+- Added native packaging: a Windows runner creates the complete self-contained x64 EXE; separate Intel x64 and Apple Silicon arm64 macOS runners use the system `hdiutil` to create architecture-matched unsigned `.dmg` files containing genuine `.app` bundles; a Linux x86_64 runner uses the official SHA256-pinned `appimagetool` to create a real `.AppImage`. All four final packages are launched and liveness-tested on matching runners.
+- A fixed PR aggregate check waits for all Windows, macOS x64, macOS arm64, and Linux packages. Pull requests, ordinary `main` pushes, schedules, and manual runs stay read-only and never publish. Only an exact `v1.1.0-rc.N` tag (`N > 0`) whose version matches the source and whose commit is contained in `origin/main` grants the trusted job release and attestation permissions. It aggregates one SHA256 manifest, per-platform SPDX SBOMs, and provenance/SBOM attestations before creating a prerelease from four-language notes. Any failed step prevents publication. All third-party Actions use full commit SHAs, and Microsoft SBOM Tool is fixed at `4.1.5`.
 
 ### Support and validation matrix
 
@@ -106,7 +106,7 @@ Cloud builds prove that source code compiles in a clean environment; they do not
 | Shared-core build/tests | CI | CI | CI |
 | Existing complete UI | WinForms preserved and validated on Windows | Not complete | Not complete |
 | Minimal Avalonia entry point | Builds; migration foundation only | Builds; migration foundation only | Builds; migration foundation only |
-| Native Preview package | Not applicable; Windows retains the existing full EXE | Unsigned x64 DMG; native-runner launch test | x86_64 AppImage; native-runner launch test |
+| Native Preview package | Complete self-contained x64 EXE; runner launch test | Unsigned x64 and native Apple Silicon arm64 DMGs; matching-runner launch tests | x86_64 AppImage; native-runner launch test |
 | Complete Facebook ZIP migration | Available | Port pending | Port pending |
 | Credential protection | Windows DPAPI available | Keychain pending | Secret Service pending |
 | Image compression | Existing Windows engine validated | Cross-platform engine pending | Cross-platform engine pending |
@@ -137,8 +137,8 @@ Cloud builds prove that source code compiles in a clean environment; they do not
 - 設定切り替えは永続トランザクションジャーナルで保護します。中断、公開ファイルの書き込み失敗、旧世代の削除失敗が起きても、次回起動時に公開ポインターに従って後処理または安全なロールバックを行います。旧資格情報を削除する前に、公開主ファイルとバックアップの両方が同じ新しい有効世代を指すことを検証します。ジャーナル削除はバックアップを先に、主ファイルを後に行い、中断後に古い取引が復活することを防ぎます。公開 JSON が読めない場合は有効なバックアップからだけ復元し、両方が無効なら証拠を上書きせず保存を停止します。
 - 同じ保存先に対する読み込み、保存、復旧、旧世代の削除は、所有権を持つプロセス間ファイルロックで取引全体を直列化します。排他的ファイルハンドルは OS が管理し、プロセス停止時に自動解放します。タイムアウト、権限不足、シンボリックリンク、reparse path を検出した場合は、ロックなしで続行せず安全側で拒否します。
 - 相対レイアウトを使う Avalonia 12 の最小デスクトップ入口と、Windows／macOS／Linux で共有コアをビルド・テストするマトリクスを追加しました。
-- ネイティブ梱包を追加しました。Intel macOS runner はシステムの `hdiutil` で真正な `.app` を収録した未署名 `.dmg` を作成し、Linux x86_64 runner は公式かつ SHA256 固定の `appimagetool` で真正な `.AppImage` を作成します。どちらも最終成果物から画面を起動してプロセス存続テストを行います。
-- 各 Preview 成果物に SHA256 と SPDX SBOM を含め、PR 以外のビルドでは GitHub が対応する場合に来歴・SBOM 証明を生成します。外部 Actions は完全な commit SHA に固定し、Microsoft SBOM Tool は `4.1.5` に固定します。
+- ネイティブ梱包を追加しました。Windows runner は完全な自己完結型 x64 EXE を作成します。Intel x64 と Apple Silicon arm64 の macOS runner は、それぞれシステムの `hdiutil` でアーキテクチャに合う真正な `.app` を収録した未署名 `.dmg` を作成します。Linux x86_64 runner は公式かつ SHA256 固定の `appimagetool` で真正な `.AppImage` を作成します。4つの最終成果物を対応する runner で起動し、存続テストを行います。
+- PR の固定集約チェックは Windows、macOS x64、macOS arm64、Linux の全成果物を待ちます。PR、通常の `main` push、定期実行、手動実行は読み取り専用で、公開しません。`v1.1.0-rc.N`（`N > 0`）に厳密一致し、ソースのバージョンとも一致し、タグの commit が `origin/main` に含まれる場合に限り、信頼済み job に公開・証明権限を与えます。単一 SHA256、各プラットフォームの SPDX SBOM、来歴／SBOM 証明をまとめ、4言語説明から prerelease を作成します。どの手順でも失敗すれば公開しません。外部 Actions は完全な commit SHA に固定し、Microsoft SBOM Tool は `4.1.5` に固定します。
 
 ### 対応・検証マトリクス
 
@@ -147,7 +147,7 @@ Cloud builds prove that source code compiles in a clean environment; they do not
 | 共有コアのビルド／テスト | CI | CI | CI |
 | 既存の完全な操作画面 | WinForms を維持し Windows で検証済み | 未完成 | 未完成 |
 | Avalonia 最小入口 | ビルド可能・移植基盤のみ | ビルド可能・移植基盤のみ | ビルド可能・移植基盤のみ |
-| ネイティブ Preview 梱包 | 対象外・Windows は既存の完全 EXE を維持 | 未署名 x64 DMG・ネイティブ runner 起動テスト | x86_64 AppImage・ネイティブ runner 起動テスト |
+| ネイティブ Preview 梱包 | 完全な自己完結型 x64 EXE・runner 起動テスト | 未署名 x64 とネイティブ Apple Silicon arm64 DMG・対応 runner 起動テスト | x86_64 AppImage・ネイティブ runner 起動テスト |
 | Facebook ZIP の完全移行 | 利用可能 | 移植待ち | 移植待ち |
 | 資格情報保護 | Windows DPAPI 実装済み | Keychain 未実装 | Secret Service 未実装 |
 | 画像圧縮 | 既存 Windows エンジンを検証済み | クロスプラットフォーム版未実装 | クロスプラットフォーム版未実装 |

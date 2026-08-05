@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -ne 3 ]]; then
-  echo "Usage: $0 <version> <publish-directory> <artifact-directory>" >&2
+if [[ $# -ne 4 ]]; then
+  echo "Usage: $0 <version> <publish-directory> <artifact-directory> <x64|arm64>" >&2
   exit 64
 fi
 
 version="$1"
 publish_dir="$(cd "$2" && pwd)"
 artifact_dir="$3"
+architecture="$4"
 app_name="FB2WordPress Preview"
 bundle_name="${app_name}.app"
 bundle_id="tw.com.flamebladestudio.fb2wordpress.preview"
@@ -17,8 +18,26 @@ numeric_version="${version%%-*}"
 bundle_version="${version##*-rc.}"
 release_notes="RELEASE_NOTES_v${version}.md"
 
-if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$ ]]; then
-  echo "Preview version must match N.N.N-rc.N: $version" >&2
+if [[ ! "$version" =~ ^1\.1\.0-rc\.([1-9][0-9]*)$ ]]; then
+  echo "Preview version must match 1.1.0-rc.N with N greater than zero: $version" >&2
+  exit 65
+fi
+case "$architecture" in
+  x64)
+    expected_binary_arch='x86_64'
+    expected_runner_machine='x86_64'
+    ;;
+  arm64)
+    expected_binary_arch='arm64'
+    expected_runner_machine='arm64'
+    ;;
+  *)
+    echo "Unsupported macOS architecture: $architecture" >&2
+    exit 65
+    ;;
+esac
+if [[ "$(uname -m)" != "$expected_runner_machine" ]]; then
+  echo "The $architecture DMG must be built on its matching native runner; found $(uname -m)." >&2
   exit 65
 fi
 if [[ ! -x "$publish_dir/$executable_name" ]]; then
@@ -26,7 +45,10 @@ if [[ ! -x "$publish_dir/$executable_name" ]]; then
   exit 66
 fi
 [[ -f "$release_notes" ]] || { echo "Four-language Preview release notes are missing: $release_notes" >&2; exit 68; }
-file "$publish_dir/$executable_name" | grep -q 'Mach-O 64-bit executable x86_64'
+[[ "$(lipo -archs "$publish_dir/$executable_name")" == "$expected_binary_arch" ]] || {
+  echo "Published executable architecture does not match $architecture." >&2
+  exit 66
+}
 
 mkdir -p "$artifact_dir"
 artifact_dir="$(cd "$artifact_dir" && pwd)"
@@ -76,7 +98,7 @@ ln -s /Applications "$staging/Applications"
 cp "$release_notes" "$staging/README - Preview limitations.md"
 cp LICENSE "$staging/LICENSE.txt"
 
-artifact="$artifact_dir/FB2WordPress-v${version}-macOS-x64-Preview.dmg"
+artifact="$artifact_dir/FB2WordPress-v${version}-macOS-${architecture}-Preview.dmg"
 hdiutil create \
   -volname "FB2WordPress Preview" \
   -srcfolder "$staging" \

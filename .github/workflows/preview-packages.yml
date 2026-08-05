@@ -3,20 +3,9 @@ name: Native Preview Packages
 on:
   push:
     branches: [main]
-    tags: ['v*-rc.*']
+    tags: ['v1.1.0-rc.*']
   pull_request:
     branches: [main]
-    paths:
-      - '.github/workflows/preview-packages.yml'
-      - 'assets/**'
-      - 'scripts/**'
-      - 'src/FB2WordPress.Core/**'
-      - 'src/FB2WordPress.Desktop/**'
-      - 'tests/CoreAudit/**'
-      - 'Directory.Build.props'
-      - 'README*.md'
-      - 'docs/CROSS_PLATFORM.md'
-      - 'RELEASE_NOTES_v*.md'
   schedule:
     - cron: '23 19 * * 4'
   workflow_dispatch:
@@ -25,13 +14,64 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Pull requests, ordinary main pushes, schedules, and manual runs inherit this
+# read-only token. Only the exact tag-only release job below receives writes.
 permissions:
   contents: read
 
 jobs:
-  macos-preview:
-    name: macOS x64 unsigned Preview DMG
-    runs-on: macos-15-intel
+  validate-context:
+    name: Validate Preview version and release context
+    runs-on: ubuntu-22.04
+    outputs:
+      preview_version: ${{ steps.release_gate.outputs.preview_version }}
+      is_release: ${{ steps.release_gate.outputs.is_release }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          dotnet-version: 10.0.x
+      - name: Fail closed unless an RC tag is exact and belongs to main
+        id: release_gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(dotnet msbuild src/FB2WordPress.Desktop/FB2WordPress.Desktop.csproj -nologo -getProperty:PreviewVersion | tail -n 1 | tr -d '\r')"
+          [[ "$version" =~ ^1\.1\.0-rc\.([1-9][0-9]*)$ ]] || {
+            echo "PreviewVersion must match 1.1.0-rc.N with N greater than zero: $version" >&2
+            exit 1
+          }
+
+          is_release=false
+          if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF_TYPE" == "tag" ]]; then
+            [[ "$GITHUB_REF_NAME" =~ ^v1\.1\.0-rc\.([1-9][0-9]*)$ ]] || {
+              echo "Release tag must match v1.1.0-rc.N with N greater than zero: $GITHUB_REF_NAME" >&2
+              exit 1
+            }
+            [[ "$GITHUB_REF_NAME" == "v$version" ]] || {
+              echo "Tag $GITHUB_REF_NAME does not match PreviewVersion v$version." >&2
+              exit 1
+            }
+            git fetch --force --no-tags origin refs/heads/main:refs/remotes/origin/main
+            git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/main || {
+              echo "Tagged commit $GITHUB_SHA is not contained in origin/main; refusing release." >&2
+              exit 1
+            }
+            is_release=true
+          elif [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            echo "Tag events other than an exact push are not trusted release contexts." >&2
+            exit 1
+          fi
+
+          echo "preview_version=$version" >> "$GITHUB_OUTPUT"
+          echo "is_release=$is_release" >> "$GITHUB_OUTPUT"
+
+  windows-package:
+    name: Windows x64 complete EXE
+    needs: validate-context
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
@@ -39,59 +79,118 @@ jobs:
           dotnet-version: |
             8.0.x
             10.0.x
-      - name: Resolve and validate Preview version
-        id: preview_version
-        shell: bash
+      - name: Existing Windows regression audit
+        run: dotnet run --project tests/AuditHarness/WordPressAuditHarness.csproj -c Release
+      - name: Publish complete self-contained Windows x64 EXE
+        shell: pwsh
         run: |
-          set -euo pipefail
-          version="$(dotnet msbuild src/FB2WordPress.Desktop/FB2WordPress.Desktop.csproj -nologo -getProperty:PreviewVersion | tail -n 1 | tr -d '\r')"
-          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$ ]] || { echo "Invalid PreviewVersion: $version" >&2; exit 1; }
-          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$version" ]]; then
-            echo "Tag $GITHUB_REF_NAME does not match PreviewVersion v$version." >&2
-            exit 1
-          fi
-          echo "value=$version" >> "$GITHUB_OUTPUT"
+          $version = '${{ needs.validate-context.outputs.preview_version }}'
+          dotnet publish src/FB2WordPress/FB2WordPress.csproj `
+            -c Release -r win-x64 --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:Version=$version `
+            -p:ContinuousIntegrationBuild=true `
+            -p:DebugSymbols=false `
+            -p:DebugType=None `
+            -o artifacts/publish
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force artifacts/release | Out-Null
+          Copy-Item artifacts/publish/FB2WordPress.exe "artifacts/release/FB2WordPress-v$version-Windows-x64.exe"
+          Copy-Item LICENSE artifacts/release/LICENSE.txt
+      - name: Launch smoke test from final EXE
+        shell: pwsh
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-windows-preview.ps1 -Executable "artifacts/release/FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-Windows-x64.exe"
+      - name: Generate SPDX SBOM with pinned Microsoft tool
+        shell: pwsh
+        run: |
+          dotnet tool install --tool-path "$env:RUNNER_TEMP/sbom-tool" Microsoft.Sbom.DotNetTool --version 4.1.5
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/generate-preview-sbom.ps1 `
+            -Version '${{ needs.validate-context.outputs.preview_version }}' `
+            -BuildDrop artifacts/publish `
+            -ArtifactDirectory artifacts/release `
+            -SbomTool "$env:RUNNER_TEMP/sbom-tool/sbom-tool.exe" `
+            -Platform Windows-x64
+      - name: Write platform SHA256 manifest
+        shell: pwsh
+        run: |
+          $version = '${{ needs.validate-context.outputs.preview_version }}'
+          $files = Get-ChildItem artifacts/release -File | Where-Object { $_.Name -match '\.(exe|spdx\.json)$' } | Sort-Object Name
+          $lines = $files | ForEach-Object { "{0}  {1}" -f (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLowerInvariant(), $_.Name }
+          $lines | Set-Content -Encoding ascii "artifacts/release/FB2WordPress-v$version-Windows-x64-Preview.SHA256SUMS.txt"
+      - name: Upload Windows complete-product evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-Windows-x64-Preview
+          path: artifacts/release/*
+          if-no-files-found: error
+          retention-days: 30
+
+  macos-preview:
+    name: macOS ${{ matrix.arch }} unsigned Preview DMG
+    needs: validate-context
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            rid: osx-x64
+            arch: x64
+            sbom-platform: macOS-x64
+          - runner: macos-15
+            rid: osx-arm64
+            arch: arm64
+            sbom-platform: macOS-arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
       - name: Native shared-core audit
         run: dotnet run --project tests/CoreAudit/FB2WordPress.Core.Audit.csproj -c Release
-      - name: Publish self-contained macOS x64 Preview
+      - name: Publish self-contained native macOS Preview
         shell: bash
         run: |
           set -euo pipefail
           dotnet publish src/FB2WordPress.Desktop/FB2WordPress.Desktop.csproj \
-            -c Release -r osx-x64 --self-contained true \
-            -p:Version=${{ steps.preview_version.outputs.value }} \
+            -c Release -r ${{ matrix.rid }} --self-contained true \
+            -p:Version=${{ needs.validate-context.outputs.preview_version }} \
             -p:ContinuousIntegrationBuild=true \
             -p:DebugSymbols=false \
             -p:DebugType=None \
             -o artifacts/publish
-      - name: Build genuine unsigned DMG
+      - name: Build genuine unsigned native DMG
         shell: bash
-        run: scripts/package-macos-preview.sh "${{ steps.preview_version.outputs.value }}" artifacts/publish artifacts/release
-      - name: Launch smoke test from mounted DMG
+        run: scripts/package-macos-preview.sh "${{ needs.validate-context.outputs.preview_version }}" artifacts/publish artifacts/release "${{ matrix.arch }}"
+      - name: Launch smoke test from mounted final DMG
         shell: bash
-        run: scripts/smoke-macos-preview.sh "artifacts/release/FB2WordPress-v${{ steps.preview_version.outputs.value }}-macOS-x64-Preview.dmg"
+        run: scripts/smoke-macos-preview.sh "artifacts/release/FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-macOS-${{ matrix.arch }}-Preview.dmg" "${{ matrix.arch }}"
       - name: Generate SPDX SBOM with pinned Microsoft tool
         shell: bash
         run: |
           set -euo pipefail
           dotnet tool install --tool-path "$RUNNER_TEMP/sbom-tool" Microsoft.Sbom.DotNetTool --version 4.1.5
           scripts/generate-preview-sbom.sh \
-            "${{ steps.preview_version.outputs.value }}" artifacts/publish artifacts/release \
-            "$RUNNER_TEMP/sbom-tool/sbom-tool" macOS-x64
-      - name: Write SHA256 manifest
+            "${{ needs.validate-context.outputs.preview_version }}" artifacts/publish artifacts/release \
+            "$RUNNER_TEMP/sbom-tool/sbom-tool" "${{ matrix.sbom-platform }}"
+      - name: Write platform SHA256 manifest
         shell: bash
         working-directory: artifacts/release
-        run: shasum -a 256 *.dmg *.spdx.json > SHA256SUMS.txt
-      - name: Upload macOS Preview evidence
+        run: shasum -a 256 *.dmg *.spdx.json > "FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-macOS-${{ matrix.arch }}-Preview.SHA256SUMS.txt"
+      - name: Upload native macOS Preview evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: FB2WordPress-v${{ steps.preview_version.outputs.value }}-macOS-x64-Preview
+          name: FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-macOS-${{ matrix.arch }}-Preview
           path: artifacts/release/*
           if-no-files-found: error
           retention-days: 30
 
   linux-preview:
     name: Linux x86_64 Preview AppImage
+    needs: validate-context
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -104,18 +203,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends xvfb xauth libegl1 libx11-6 libice6 libsm6 libfontconfig1 libfreetype6 libxrandr2 libxrender1 libxfixes3 libxcursor1 libxi6 libgl1 libdbus-1-3
-      - name: Resolve and validate Preview version
-        id: preview_version
-        shell: bash
-        run: |
-          set -euo pipefail
-          version="$(dotnet msbuild src/FB2WordPress.Desktop/FB2WordPress.Desktop.csproj -nologo -getProperty:PreviewVersion | tail -n 1 | tr -d '\r')"
-          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$ ]] || { echo "Invalid PreviewVersion: $version" >&2; exit 1; }
-          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$version" ]]; then
-            echo "Tag $GITHUB_REF_NAME does not match PreviewVersion v$version." >&2
-            exit 1
-          fi
-          echo "value=$version" >> "$GITHUB_OUTPUT"
       - name: Native shared-core audit
         run: dotnet run --project tests/CoreAudit/FB2WordPress.Core.Audit.csproj -c Release
       - name: Publish self-contained Linux x86_64 Preview
@@ -124,7 +211,7 @@ jobs:
           set -euo pipefail
           dotnet publish src/FB2WordPress.Desktop/FB2WordPress.Desktop.csproj \
             -c Release -r linux-x64 --self-contained true \
-            -p:Version=${{ steps.preview_version.outputs.value }} \
+            -p:Version=${{ needs.validate-context.outputs.preview_version }} \
             -p:ContinuousIntegrationBuild=true \
             -p:DebugSymbols=false \
             -p:DebugType=None \
@@ -141,60 +228,136 @@ jobs:
           chmod +x "$tool"
       - name: Build genuine x86_64 AppImage
         shell: bash
-        run: scripts/package-linux-preview.sh "${{ steps.preview_version.outputs.value }}" artifacts/publish artifacts/release "$RUNNER_TEMP/appimagetool-x86_64.AppImage"
+        run: scripts/package-linux-preview.sh "${{ needs.validate-context.outputs.preview_version }}" artifacts/publish artifacts/release "$RUNNER_TEMP/appimagetool-x86_64.AppImage"
       - name: Launch smoke test from final AppImage
         shell: bash
-        run: xvfb-run --auto-servernum scripts/smoke-linux-preview.sh "artifacts/release/FB2WordPress-v${{ steps.preview_version.outputs.value }}-Linux-x86_64-Preview.AppImage"
+        run: xvfb-run --auto-servernum scripts/smoke-linux-preview.sh "artifacts/release/FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-Linux-x86_64-Preview.AppImage"
       - name: Generate SPDX SBOM with pinned Microsoft tool
         shell: bash
         run: |
           set -euo pipefail
           dotnet tool install --tool-path "$RUNNER_TEMP/sbom-tool" Microsoft.Sbom.DotNetTool --version 4.1.5
           scripts/generate-preview-sbom.sh \
-            "${{ steps.preview_version.outputs.value }}" artifacts/publish artifacts/release \
+            "${{ needs.validate-context.outputs.preview_version }}" artifacts/publish artifacts/release \
             "$RUNNER_TEMP/sbom-tool/sbom-tool" Linux-x86_64
-      - name: Write SHA256 manifest
+      - name: Write platform SHA256 manifest
         shell: bash
         working-directory: artifacts/release
-        run: sha256sum *.AppImage *.spdx.json > SHA256SUMS.txt
+        run: sha256sum *.AppImage *.spdx.json > "FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-Linux-x86_64-Preview.SHA256SUMS.txt"
       - name: Upload Linux Preview evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: FB2WordPress-v${{ steps.preview_version.outputs.value }}-Linux-x86_64-Preview
+          name: FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-Linux-x86_64-Preview
           path: artifacts/release/*
           if-no-files-found: error
           retention-days: 30
 
-  attest-preview:
-    name: Trusted Preview provenance and SBOM attestations
-    if: github.event_name != 'pull_request'
-    needs: [macos-preview, linux-preview]
+  required-native-preview-gate:
+    name: Required / Windows + macOS x64 + macOS arm64 + Linux packages
+    if: always() && github.event_name == 'pull_request'
+    needs: [validate-context, windows-package, macos-preview, linux-preview]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Require every native package and smoke test
+        shell: bash
+        env:
+          VALIDATE_RESULT: ${{ needs.validate-context.result }}
+          WINDOWS_RESULT: ${{ needs.windows-package.result }}
+          MACOS_MATRIX_RESULT: ${{ needs.macos-preview.result }}
+          LINUX_RESULT: ${{ needs.linux-preview.result }}
+        run: |
+          set -euo pipefail
+          for result in "$VALIDATE_RESULT" "$WINDOWS_RESULT" "$MACOS_MATRIX_RESULT" "$LINUX_RESULT"; do
+            [[ "$result" == "success" ]] || {
+              echo "At least one required native package or final-artifact smoke test failed: validate=$VALIDATE_RESULT windows=$WINDOWS_RESULT macOS-matrix=$MACOS_MATRIX_RESULT linux=$LINUX_RESULT" >&2
+              exit 1
+            }
+          done
+          echo "PASS: Windows, macOS x64, macOS arm64, and Linux final packages all passed."
+
+  attest-and-release:
+    name: Trusted attestations and prerelease publication
+    if: needs.validate-context.outputs.is_release == 'true'
+    needs: [validate-context, windows-package, macos-preview, linux-preview]
     runs-on: ubuntu-22.04
     permissions:
-      contents: read
+      contents: write
       id-token: write
-      attestations: write
+      artifact-metadata: write
     steps:
-      - name: Download native Preview evidence
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Download all final package evidence
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           pattern: FB2WordPress-v*-Preview
           path: trusted-artifacts
-      - name: Attest DMG provenance
+          merge-multiple: true
+      - name: Assemble exact release bundle and aggregate SHA256 manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ needs.validate-context.outputs.preview_version }}"
+          mkdir -p release-bundle
+          expected=(
+            "FB2WordPress-v${version}-Windows-x64.exe"
+            "FB2WordPress-v${version}-Windows-x64-Preview.spdx.json"
+            "FB2WordPress-v${version}-macOS-x64-Preview.dmg"
+            "FB2WordPress-v${version}-macOS-x64-Preview.spdx.json"
+            "FB2WordPress-v${version}-macOS-arm64-Preview.dmg"
+            "FB2WordPress-v${version}-macOS-arm64-Preview.spdx.json"
+            "FB2WordPress-v${version}-Linux-x86_64-Preview.AppImage"
+            "FB2WordPress-v${version}-Linux-x86_64-Preview.spdx.json"
+            "LICENSE.txt"
+          )
+          for name in "${expected[@]}"; do
+            [[ -s "trusted-artifacts/$name" ]] || { echo "Missing required release asset: $name" >&2; exit 1; }
+            cp "trusted-artifacts/$name" "release-bundle/$name"
+          done
+          notes="RELEASE_NOTES_v${version}.md"
+          [[ -s "$notes" ]] || { echo "Missing four-language release notes: $notes" >&2; exit 1; }
+          cp "$notes" release-bundle/
+          (
+            cd release-bundle
+            sha256sum "${expected[@]}" "$notes" > SHA256SUMS.txt
+          )
+      - name: Attest Windows EXE provenance
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
-          subject-path: trusted-artifacts/*macOS*/*.dmg
-      - name: Attest DMG SBOM
+          subject-path: release-bundle/FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-Windows-x64.exe
+      - name: Attest Windows EXE SBOM
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
-          subject-path: trusted-artifacts/*macOS*/*.dmg
-          sbom-path: trusted-artifacts/*macOS*/*.spdx.json
-      - name: Attest AppImage provenance
+          subject-path: release-bundle/FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-Windows-x64.exe
+          sbom-path: release-bundle/FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-Windows-x64-Preview.spdx.json
+      - name: Attest macOS x64 DMG provenance
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
-          subject-path: trusted-artifacts/*Linux*/*.AppImage
-      - name: Attest AppImage SBOM
+          subject-path: release-bundle/FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-macOS-x64-Preview.dmg
+      - name: Attest macOS x64 DMG SBOM
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
-          subject-path: trusted-artifacts/*Linux*/*.AppImage
-          sbom-path: trusted-artifacts/*Linux*/*.spdx.json
+          subject-path: release-bundle/FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-macOS-x64-Preview.dmg
+          sbom-path: release-bundle/FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-macOS-x64-Preview.spdx.json
+      - name: Attest macOS arm64 DMG provenance
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: release-bundle/FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-macOS-arm64-Preview.dmg
+      - name: Attest macOS arm64 DMG SBOM
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: release-bundle/FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-macOS-arm64-Preview.dmg
+          sbom-path: release-bundle/FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-macOS-arm64-Preview.spdx.json
+      - name: Attest Linux AppImage provenance
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: release-bundle/FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-Linux-x86_64-Preview.AppImage
+      - name: Attest Linux AppImage SBOM
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: release-bundle/FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-Linux-x86_64-Preview.AppImage
+          sbom-path: release-bundle/FB2WordPress-v${{ needs.validate-context.outputs.preview_version }}-Linux-x86_64-Preview.spdx.json
+      - name: Publish four-language GitHub prerelease only after every gate passes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/publish-preview-release.sh "$GITHUB_REF_NAME" "${{ needs.validate-context.outputs.preview_version }}" release-bundle

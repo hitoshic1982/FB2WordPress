@@ -62,11 +62,11 @@ Facebook の公式ダウンロードデータに含まれる投稿・画像・�
 
 ## クロスプラットフォーム開発状況
 
-現在、完全な移行、画像処理、安全な資格情報保存を利用できるのは Windows WinForms 版だけです。`v1.1.0-rc.1` では、**未署名の macOS x64 Preview DMG** と **Linux x86_64 Preview AppImage** も提供します。どちらも起動可能な Avalonia 移植入口であり、完全な移行製品でも Windows 完全版の代替でもありません。
+現在、完全な移行、画像処理、安全な資格情報保存を利用できるのは Windows WinForms 版だけです。`v1.1.0-rc.1` では、**Windows x64 完全版 EXE**、**macOS x64 と Apple Silicon arm64 の個別の未署名 Preview DMG**、および **Linux x86_64 Preview AppImage** を提供します。macOS／Linux 版は起動可能な Avalonia 移植入口であり、完全な移行製品でも Windows 完全版の代替でもありません。
 
-- DMG はネイティブの Intel macOS GitHub runner で作成し、真正な x64 `.app` を収録します。Apple Developer 署名がないため、初回は Control キーを押しながら「開く」を選ぶか、「プライバシーとセキュリティ」で許可する必要があります。Apple Silicon ネイティブ版ではなく、Rosetta 2 が必要になる可能性があり、現時点では未検証です。
+- 2種類の DMG は Intel x64 と Apple Silicon arm64 のネイティブ macOS GitHub runner で個別に作成・起動検証します。Apple Silicon 利用者は Rosetta 2 に依存せず、ネイティブ arm64 版を利用できます。Apple Developer 署名がないため、初回は Control キーを押しながら「開く」を選ぶか、「プライバシーとセキュリティ」で許可する必要があります。
 - AppImage はネイティブの Linux x86_64 runner で作成します。ダウンロード後に `chmod +x FB2WordPress-*-Preview.AppImage` を実行してから起動してください。一般的な Linux デスクトップ用グラフィックスライブラリは必要です。
-- CI はマウントした DMG と最終 AppImage から画面を起動し、プロセスが存続することを確認します。各成果物には `SHA256SUMS.txt` と SPDX SBOM を添付し、PR 以外のビルドでは GitHub が対応する場合に来歴・SBOM 証明も生成します。
+- CI は最終 Windows EXE、マウントした2種類の DMG、最終 AppImage を起動し、各プロセスの存続を確認します。`v1.1.0-rc.N`（`N > 0`）に厳密一致し、ソースのバージョンとも一致し、タグの commit が `origin/main` に含まれる場合に限り、単一の `SHA256SUMS.txt`、各プラットフォームの SPDX SBOM、来歴証明をまとめ、この4言語説明から GitHub prerelease を作成します。PR と通常の `main` push は読み取り専用検証だけを行い、公開しません。
 - これはクリーンなクラウド runner 上でのビルド、梱包、起動の証拠です。**作者による macOS／Linux 実機検証でも、全機能対応の表明でもありません**。
 
 完全な対応表、安全な保管庫の原則、今後の計画は [クロスプラットフォーム開発ガイド](docs/CROSS_PLATFORM.md)、今回の4言語 Preview 公開文は [`RELEASE_NOTES_v1.1.0-rc.1.md`](RELEASE_NOTES_v1.1.0-rc.1.md) をご覧ください。

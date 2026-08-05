@@ -132,16 +132,30 @@ var dependencyWorkflow = File.ReadAllText(Path.Combine(Directory.GetCurrentDirec
 Check(dependencyWorkflow.Contains("actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294", StringComparison.Ordinal), "Dependency Review uses the reviewed pinned action revision");
 
 var previewWorkflow = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), ".github", "workflows", "preview-packages.yml"));
-Check(previewWorkflow.Contains("runs-on: macos-15-intel", StringComparison.Ordinal) && previewWorkflow.Contains("runs-on: ubuntu-22.04", StringComparison.Ordinal),
-    "Preview packages are built on matching native x64 GitHub runners");
+Check(previewWorkflow.Contains("runner: macos-15-intel", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("runner: macos-15", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("rid: osx-x64", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("rid: osx-arm64", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("runs-on: ubuntu-22.04", StringComparison.Ordinal),
+    "Preview packages use native Intel x64 and Apple Silicon arm64 macOS runners plus Linux");
+Check(previewWorkflow.Contains("name: Required / Windows + macOS x64 + macOS arm64 + Linux packages", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("if: always() && github.event_name == 'pull_request'", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("needs: [validate-context, windows-package, macos-preview, linux-preview]", StringComparison.Ordinal) &&
+      !Regex.IsMatch(previewWorkflow, @"pull_request:\s*\r?\n\s+branches:\s*\[main\]\s*\r?\n\s+paths:", RegexOptions.CultureInvariant),
+    "Every PR receives one fixed required gate that aggregates all four native packages");
 Check(previewWorkflow.Contains("actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26", StringComparison.Ordinal) &&
       previewWorkflow.Contains("actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c", StringComparison.Ordinal) &&
-      previewWorkflow.Contains("attestations: write", StringComparison.Ordinal) && previewWorkflow.Contains("id-token: write", StringComparison.Ordinal) &&
-      previewWorkflow.Contains("if: github.event_name != 'pull_request'", StringComparison.Ordinal),
-    "Only a trusted non-PR job receives commit-pinned GitHub provenance and SBOM attestation permissions");
+      previewWorkflow.Contains("artifact-metadata: write", StringComparison.Ordinal) && previewWorkflow.Contains("id-token: write", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("contents: write", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("if: needs.validate-context.outputs.is_release == 'true'", StringComparison.Ordinal),
+    "Only the exact tag-gated trusted job receives release and commit-pinned attestation permissions");
+Check(previewWorkflow.Contains("^v1\\.1\\.0-rc\\.([1-9][0-9]*)$", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("git merge-base --is-ancestor \"$GITHUB_SHA\" refs/remotes/origin/main", StringComparison.Ordinal) &&
+      previewWorkflow.Contains("$GITHUB_REF_NAME\" == \"v$version", StringComparison.Ordinal),
+    "Release gate requires an exact nonzero RC tag, matching source version, and origin/main ancestry");
 Check(previewWorkflow.Contains("Microsoft.Sbom.DotNetTool --version 4.1.5", StringComparison.Ordinal) &&
       previewWorkflow.Contains("SHA256SUMS.txt", StringComparison.Ordinal),
-    "Preview artifact sets include a version-pinned SPDX generator and SHA256 manifest");
+    "Preview artifact sets include a version-pinned SPDX generator and an aggregate SHA256 manifest");
 Check(previewWorkflow.Contains("a6d71e2b6cd66f8e8d16c37ad164658985e0cf5fcaa950c90a482890cb9d13e0", StringComparison.Ordinal) &&
       previewWorkflow.Contains("sha256sum --check --strict", StringComparison.Ordinal),
     "The official appimagetool download is fail-closed by an exact SHA256");
@@ -150,18 +164,35 @@ var macPackageScript = File.ReadAllText(Path.Combine(Directory.GetCurrentDirecto
 var macSmokeScript = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "scripts", "smoke-macos-preview.sh"));
 var linuxPackageScript = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "scripts", "package-linux-preview.sh"));
 var linuxSmokeScript = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "scripts", "smoke-linux-preview.sh"));
+var windowsSmokeScript = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "scripts", "smoke-windows-preview.ps1"));
+var releaseScript = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "scripts", "publish-preview-release.sh"));
 Check(macPackageScript.Contains("hdiutil create", StringComparison.Ordinal) && macPackageScript.Contains(".app", StringComparison.Ordinal) &&
-      macPackageScript.Contains("codesign --verify", StringComparison.Ordinal),
-    "macOS packaging creates a genuine unsigned DMG containing an app bundle");
+      macPackageScript.Contains("codesign --verify", StringComparison.Ordinal) &&
+      macPackageScript.Contains("lipo -archs", StringComparison.Ordinal) &&
+      macPackageScript.Contains("expected_binary_arch='x86_64'", StringComparison.Ordinal) &&
+      macPackageScript.Contains("expected_binary_arch='arm64'", StringComparison.Ordinal),
+    "macOS packaging creates genuine architecture-matched unsigned x64 and arm64 DMGs");
 Check(macSmokeScript.Contains("hdiutil attach", StringComparison.Ordinal) && macSmokeScript.Contains("sleep 6", StringComparison.Ordinal) &&
-      macSmokeScript.Contains("kill -0", StringComparison.Ordinal),
-    "macOS smoke test launches from the mounted final DMG and proves liveness");
+      macSmokeScript.Contains("kill -0", StringComparison.Ordinal) && macSmokeScript.Contains("uname -m", StringComparison.Ordinal) &&
+      macSmokeScript.Contains("Contents/Resources/LICENSE.txt", StringComparison.Ordinal) && macSmokeScript.Contains("MIT License", StringComparison.Ordinal),
+    "macOS smoke test verifies both MIT LICENSE copies, launches each final DMG natively, and proves liveness");
 Check(linuxPackageScript.Contains("appimagetool", StringComparison.OrdinalIgnoreCase) && linuxPackageScript.Contains("AppRun", StringComparison.Ordinal) &&
       linuxPackageScript.Contains("ELF 64-bit", StringComparison.Ordinal),
     "Linux packaging creates a genuine x86_64 AppImage rather than a renamed archive");
 Check(linuxSmokeScript.Contains("APPIMAGE_EXTRACT_AND_RUN=1", StringComparison.Ordinal) && linuxSmokeScript.Contains("sleep 6", StringComparison.Ordinal) &&
-      linuxSmokeScript.Contains("kill -0", StringComparison.Ordinal),
-    "Linux smoke test launches the final AppImage and proves liveness");
+      linuxSmokeScript.Contains("kill -0", StringComparison.Ordinal) && linuxSmokeScript.Contains("--appimage-extract", StringComparison.Ordinal) &&
+      linuxSmokeScript.Contains("LICENSE.txt", StringComparison.Ordinal) && linuxSmokeScript.Contains("MIT License", StringComparison.Ordinal),
+    "Linux smoke test verifies the embedded MIT LICENSE, launches the final AppImage, and proves liveness");
+Check(windowsSmokeScript.Contains("Start-Process", StringComparison.Ordinal) && windowsSmokeScript.Contains("Start-Sleep -Seconds 6", StringComparison.Ordinal) &&
+      windowsSmokeScript.Contains("HasExited", StringComparison.Ordinal) && windowsSmokeScript.Contains("LICENSE.txt", StringComparison.Ordinal) &&
+      windowsSmokeScript.Contains("MIT License", StringComparison.Ordinal),
+    "Windows smoke test verifies the adjacent MIT LICENSE, launches the final complete EXE, and proves liveness");
+Check(releaseScript.Contains("gh release create", StringComparison.Ordinal) && releaseScript.Contains("--draft", StringComparison.Ordinal) &&
+      releaseScript.Contains("--prerelease", StringComparison.Ordinal) && releaseScript.Contains("--verify-tag", StringComparison.Ordinal) &&
+      releaseScript.Contains("gh release upload", StringComparison.Ordinal) && releaseScript.Contains("draft=false", StringComparison.Ordinal) &&
+      releaseScript.Contains("cleanup_failed_draft", StringComparison.Ordinal) &&
+      releaseScript.Contains("macOS-arm64-Preview.dmg", StringComparison.Ordinal),
+    "Release publication is draft-first, exact-asset verified, fail-closed, and includes all native deliverables");
 Check(File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), ".gitattributes")).Contains("*.sh text eol=lf", StringComparison.Ordinal),
     "Packaging shell scripts keep LF line endings on every checkout platform");
 
@@ -187,14 +218,17 @@ Check(new[] { "README.md", "README.zh-CN.md", "README.en.md", "README.ja.md" }.A
           var text = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), path));
           return text.Contains("Preview", StringComparison.Ordinal) && text.Contains("DMG", StringComparison.Ordinal) &&
                  text.Contains("AppImage", StringComparison.Ordinal) && text.Contains("SHA256", StringComparison.Ordinal) &&
-                 text.Contains("SPDX SBOM", StringComparison.Ordinal) && text.Contains("RELEASE_NOTES_v1.1.0-rc.1.md", StringComparison.Ordinal);
+                 text.Contains("SPDX SBOM", StringComparison.Ordinal) && text.Contains("arm64", StringComparison.Ordinal) &&
+                 text.Contains("origin/main", StringComparison.Ordinal) && text.Contains("RELEASE_NOTES_v1.1.0-rc.1.md", StringComparison.Ordinal);
       }),
-    "All four README languages explain the same Preview artifacts and verification evidence");
+    "All four README languages explain both native macOS architectures and the same fail-closed release evidence");
 var previewReleaseNotes = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "RELEASE_NOTES_v1.1.0-rc.1.md"));
 Check(new[] { "## 繁體中文", "## 简体中文", "## English", "## 日本語" }.All(previewReleaseNotes.Contains) &&
       previewReleaseNotes.Contains("not a formal compatibility claim", StringComparison.Ordinal) &&
-      previewReleaseNotes.Contains("作者持有 macOS／Linux 實機", StringComparison.Ordinal),
-    "Preview release notes contain four complete languages and an explicit real-device boundary");
+      previewReleaseNotes.Contains("作者持有 macOS／Linux 實機", StringComparison.Ordinal) &&
+      previewReleaseNotes.Contains("Apple Silicon arm64", StringComparison.Ordinal) &&
+      previewReleaseNotes.Contains("Any artifact or verification failure prevents publication", StringComparison.Ordinal),
+    "Preview release notes contain four complete languages, native Apple Silicon, and a fail-closed release boundary");
 
 // Localization: verify the public language contract and every translated value.
 var localizer = assembly.GetType("FB2WordPress.L", true)!;

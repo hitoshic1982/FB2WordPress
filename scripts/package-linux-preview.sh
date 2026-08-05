@@ -13,8 +13,8 @@ appimagetool="$(cd "$(dirname "$4")" && pwd)/$(basename "$4")"
 executable_name="FB2WordPress.Desktop"
 release_notes="RELEASE_NOTES_v${version}.md"
 
-if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$ ]]; then
-  echo "Preview version must match N.N.N-rc.N: $version" >&2
+if [[ ! "$version" =~ ^1\.1\.0-rc\.([1-9][0-9]*)$ ]]; then
+  echo "Preview version must match 1.1.0-rc.N with N greater than zero: $version" >&2
   exit 65
 fi
 if [[ ! -x "$publish_dir/$executable_name" ]]; then
